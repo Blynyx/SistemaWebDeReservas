@@ -64,6 +64,23 @@ export function findAllByProfessional(organizationId, professionalId) {
     .all(organizationId, professionalId);
 }
 
+export function findCoveringSchedule(organizationId, professionalId, dayOfWeek, startTime, endTime) {
+  return getDb()
+    .prepare(
+      `
+        SELECT ${SCHEDULE_COLUMNS}
+        FROM weekly_schedules
+        WHERE organization_id = ?
+          AND professional_id = ?
+          AND day_of_week = ?
+          AND start_time <= ?
+          AND end_time >= ?
+        LIMIT 1
+      `
+    )
+    .get(organizationId, professionalId, dayOfWeek, startTime, endTime);
+}
+
 export function hasOverlap({
   organizationId,
   professionalId,
