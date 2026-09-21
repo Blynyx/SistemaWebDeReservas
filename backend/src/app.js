@@ -3,6 +3,7 @@ import cors from 'cors';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import onboardingRoutes from './modules/onboarding/onboarding.routes.js';
+import clientRoutes from './modules/clients/client.routes.js';
 import professionalRoutes from './modules/professionals/professional.routes.js';
 import serviceRoutes from './modules/services/service.routes.js';
 
@@ -19,6 +20,7 @@ app.use('/api/v1/onboarding', onboardingRoutes);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/services', serviceRoutes);
 app.use('/api/v1/professionals', professionalRoutes);
+app.use('/api/v1/clients', clientRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
