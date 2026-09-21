@@ -30,3 +30,15 @@ export function findById(id) {
     )
     .get(id);
 }
+
+export function findBySlug(slug) {
+  return getDb()
+    .prepare(
+      `
+        SELECT id, name, slug, is_active
+        FROM organizations
+        WHERE slug = ?
+      `
+    )
+    .get(slug);
+}

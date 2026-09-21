@@ -11,4 +11,10 @@ dotenv.config({ path: path.join(backendRoot, '.env') });
 
 export const PORT = Number(process.env.PORT) || 3000;
 export const DB_PATH = process.env.DB_PATH || './data/reservas.db';
+export const JWT_SECRET = process.env.JWT_SECRET;
+export const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '2h';
 export { backendRoot };
+
+if (!JWT_SECRET) {
+  throw new Error('La variable de entorno JWT_SECRET es obligatoria');
+}
