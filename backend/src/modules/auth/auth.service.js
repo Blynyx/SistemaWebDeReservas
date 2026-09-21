@@ -69,18 +69,34 @@ export async function login(body) {
   };
 }
 
-export function getCurrentSession(authUser) {
-  const user = findByIdAndOrganization(authUser.id, authUser.organizationId);
+export function resolveActiveIdentity(tokenUser) {
+  if (!tokenUser?.id || !tokenUser?.organizationId) {
+    throw httpError(401, 'No autenticado');
+  }
+
+  const user = findByIdAndOrganization(tokenUser.id, tokenUser.organizationId);
 
   if (!user || user.is_active !== 1) {
     throw httpError(401, 'No autenticado');
   }
 
-  const organization = findOrganizationById(authUser.organizationId);
+  const organization = findOrganizationById(tokenUser.organizationId);
 
   if (!organization || organization.is_active !== 1) {
     throw httpError(401, 'No autenticado');
   }
+
+  return {
+    id: user.id,
+    organizationId: user.organization_id,
+    role: user.role,
+    user,
+    organization,
+  };
+}
+
+export function getCurrentSession(authUser) {
+  const { user, organization } = resolveActiveIdentity(authUser);
 
   return {
     user: {
