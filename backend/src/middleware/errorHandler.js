@@ -5,12 +5,26 @@ export function notFoundHandler(req, res, next) {
 }
 
 export function errorHandler(err, req, res, next) {
-  const statusCode = err.statusCode || 500;
+  if (err.statusCode && err.statusCode < 500) {
+    res.status(err.statusCode).json({
+      status: 'error',
+      message: err.message,
+    });
+    return;
+  }
 
   console.error(err);
 
-  res.status(statusCode).json({
+  if (typeof err.code === 'string' && err.code.startsWith('SQLITE_CONSTRAINT')) {
+    res.status(409).json({
+      status: 'error',
+      message: 'Ya existe un registro con esos datos',
+    });
+    return;
+  }
+
+  res.status(500).json({
     status: 'error',
-    message: statusCode === 500 ? 'Error interno del servidor' : err.message,
+    message: 'Error interno del servidor',
   });
 }
