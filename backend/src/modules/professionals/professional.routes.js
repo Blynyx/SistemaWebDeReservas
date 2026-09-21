@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authMiddleware } from '../../middleware/auth.middleware.js';
 import { authorizeRoles } from '../../middleware/authorizeRoles.middleware.js';
+import professionalServiceRoutes from '../professionalServices/professionalService.routes.js';
 import {
   createProfessionalController,
   deleteProfessionalController,
@@ -10,6 +11,8 @@ import {
 } from './professional.controller.js';
 
 const router = Router();
+
+router.use(professionalServiceRoutes);
 
 router.post('/', authMiddleware, authorizeRoles('ADMIN'), createProfessionalController);
 router.get(
