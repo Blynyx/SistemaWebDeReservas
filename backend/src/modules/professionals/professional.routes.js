@@ -10,6 +10,7 @@ import {
   getProfessionalController,
   listProfessionalsController,
   patchProfessionalController,
+  provisionProfessionalAccountController,
 } from './professional.controller.js';
 
 const router = Router();
@@ -17,6 +18,13 @@ const router = Router();
 router.use(professionalServiceRoutes);
 router.use(weeklyScheduleRoutes);
 router.use(availabilityBlockRoutes);
+
+router.post(
+  '/:professionalId/account',
+  authMiddleware,
+  authorizeRoles('ADMIN'),
+  provisionProfessionalAccountController
+);
 
 router.post('/', authMiddleware, authorizeRoles('ADMIN'), createProfessionalController);
 router.get(

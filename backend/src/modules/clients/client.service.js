@@ -1,10 +1,19 @@
 import { randomUUID } from 'node:crypto';
+import { runInImmediateTransaction } from '../../database/transaction.js';
 import { httpError } from '../../utils/httpError.js';
+import { parseLoginEmail, parseLoginPassword } from '../../utils/credentials.js';
+import { hashPassword } from '../../utils/password.js';
+import {
+  deactivate as deactivateUserAccount,
+  findByOrganizationIdAndEmail,
+  insertUserAccount,
+} from '../userAccounts/userAccount.repository.js';
 import {
   deactivateClient,
   findAllByOrganization,
   findById,
   insertClient,
+  linkUserAccount,
   updateClient,
 } from './client.repository.js';
 
@@ -154,9 +163,62 @@ export function patchClient(organizationId, clientId, body) {
 }
 
 export function removeClient(organizationId, clientId) {
-  const client = requireTenantClient(organizationId, clientId);
+  runInImmediateTransaction(() => {
+    const client = requireTenantClient(organizationId, clientId);
 
-  if (client.is_active === 1) {
+    if (client.is_active !== 1) {
+      return;
+    }
+
     deactivateClient(organizationId, clientId, new Date().toISOString());
-  }
+
+    if (client.user_account_id) {
+      deactivateUserAccount(organizationId, client.user_account_id);
+    }
+  });
+}
+
+export async function provisionClientAccount(organizationId, clientId, body) {
+  const email = parseLoginEmail(body?.email);
+  const password = parseLoginPassword(body?.password);
+  const passwordHash = await hashPassword(password);
+
+  return runInImmediateTransaction(() => {
+    const client = requireTenantClient(organizationId, clientId);
+
+    if (client.is_active !== 1) {
+      throw httpError(409, 'El cliente no está activo');
+    }
+
+    if (client.user_account_id) {
+      throw httpError(409, 'El cliente ya tiene una cuenta');
+    }
+
+    if (findByOrganizationIdAndEmail(organizationId, email)) {
+      throw httpError(409, 'Ya existe una cuenta con ese correo');
+    }
+
+    const userAccountId = randomUUID();
+
+    insertUserAccount({
+      id: userAccountId,
+      organizationId,
+      email,
+      passwordHash,
+      role: 'CLIENT',
+      isActive: 1,
+    });
+
+    linkUserAccount(organizationId, client.id, userAccountId, new Date().toISOString());
+
+    return {
+      clientId: client.id,
+      userAccount: {
+        id: userAccountId,
+        email,
+        role: 'CLIENT',
+        isActive: 1,
+      },
+    };
+  });
 }

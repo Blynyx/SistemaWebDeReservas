@@ -95,6 +95,30 @@ export function updateProfessional(organizationId, professionalId, fields) {
     .run(...values);
 }
 
+export function findByUserAccountId(organizationId, userAccountId) {
+  return getDb()
+    .prepare(
+      `
+        SELECT ${PROFESSIONAL_COLUMNS}
+        FROM professionals
+        WHERE organization_id = ? AND user_account_id = ?
+      `
+    )
+    .get(organizationId, userAccountId);
+}
+
+export function linkUserAccount(organizationId, professionalId, userAccountId, updatedAt) {
+  getDb()
+    .prepare(
+      `
+        UPDATE professionals
+        SET user_account_id = ?, updated_at = ?
+        WHERE organization_id = ? AND id = ? AND user_account_id IS NULL
+      `
+    )
+    .run(userAccountId, updatedAt, organizationId, professionalId);
+}
+
 export function deactivateProfessional(organizationId, professionalId, updatedAt) {
   getDb()
     .prepare(

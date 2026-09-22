@@ -95,6 +95,30 @@ export function updateClient(organizationId, clientId, fields) {
     .run(...values);
 }
 
+export function findByUserAccountId(organizationId, userAccountId) {
+  return getDb()
+    .prepare(
+      `
+        SELECT ${CLIENT_COLUMNS}
+        FROM clients
+        WHERE organization_id = ? AND user_account_id = ?
+      `
+    )
+    .get(organizationId, userAccountId);
+}
+
+export function linkUserAccount(organizationId, clientId, userAccountId, updatedAt) {
+  getDb()
+    .prepare(
+      `
+        UPDATE clients
+        SET user_account_id = ?, updated_at = ?
+        WHERE organization_id = ? AND id = ? AND user_account_id IS NULL
+      `
+    )
+    .run(userAccountId, updatedAt, organizationId, clientId);
+}
+
 export function deactivateClient(organizationId, clientId, updatedAt) {
   getDb()
     .prepare(

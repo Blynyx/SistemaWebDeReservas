@@ -60,3 +60,15 @@ export function findByOrganizationIdAndEmail(organizationId, email) {
     )
     .get(organizationId, email);
 }
+
+export function deactivate(organizationId, userAccountId) {
+  getDb()
+    .prepare(
+      `
+        UPDATE user_accounts
+        SET is_active = 0, updated_at = CURRENT_TIMESTAMP
+        WHERE organization_id = ? AND id = ?
+      `
+    )
+    .run(organizationId, userAccountId);
+}

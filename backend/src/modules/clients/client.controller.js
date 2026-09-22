@@ -3,6 +3,7 @@ import {
   getClient,
   listClients,
   patchClient,
+  provisionClientAccount,
   removeClient,
 } from './client.service.js';
 
@@ -46,6 +47,19 @@ export function deleteClientController(req, res, next) {
   try {
     removeClient(req.user.organizationId, req.params.id);
     res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function provisionClientAccountController(req, res, next) {
+  try {
+    const result = await provisionClientAccount(
+      req.user.organizationId,
+      req.params.clientId,
+      req.body
+    );
+    res.status(201).json(result);
   } catch (error) {
     next(error);
   }

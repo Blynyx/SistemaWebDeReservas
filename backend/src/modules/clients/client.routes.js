@@ -7,11 +7,18 @@ import {
   getClientController,
   listClientsController,
   patchClientController,
+  provisionClientAccountController,
 } from './client.controller.js';
 
 const router = Router();
 const staffRoles = authorizeRoles('ADMIN', 'RECEPTIONIST');
 
+router.post(
+  '/:clientId/account',
+  authMiddleware,
+  staffRoles,
+  provisionClientAccountController
+);
 router.post('/', authMiddleware, staffRoles, createClientController);
 router.get('/', authMiddleware, staffRoles, listClientsController);
 router.get('/:id', authMiddleware, staffRoles, getClientController);

@@ -1,10 +1,19 @@
 import { randomUUID } from 'node:crypto';
+import { runInImmediateTransaction } from '../../database/transaction.js';
 import { httpError } from '../../utils/httpError.js';
+import { parseLoginEmail, parseLoginPassword } from '../../utils/credentials.js';
+import { hashPassword } from '../../utils/password.js';
+import {
+  deactivate as deactivateUserAccount,
+  findByOrganizationIdAndEmail,
+  insertUserAccount,
+} from '../userAccounts/userAccount.repository.js';
 import {
   deactivateProfessional,
   findAllByOrganization,
   findById,
   insertProfessional,
+  linkUserAccount,
   updateProfessional,
 } from './professional.repository.js';
 
@@ -135,9 +144,62 @@ export function patchProfessional(organizationId, professionalId, body) {
 }
 
 export function removeProfessional(organizationId, professionalId) {
-  const professional = requireTenantProfessional(organizationId, professionalId);
+  runInImmediateTransaction(() => {
+    const professional = requireTenantProfessional(organizationId, professionalId);
 
-  if (professional.is_active === 1) {
+    if (professional.is_active !== 1) {
+      return;
+    }
+
     deactivateProfessional(organizationId, professionalId, new Date().toISOString());
-  }
+
+    if (professional.user_account_id) {
+      deactivateUserAccount(organizationId, professional.user_account_id);
+    }
+  });
+}
+
+export async function provisionProfessionalAccount(organizationId, professionalId, body) {
+  const email = parseLoginEmail(body?.email);
+  const password = parseLoginPassword(body?.password);
+  const passwordHash = await hashPassword(password);
+
+  return runInImmediateTransaction(() => {
+    const professional = requireTenantProfessional(organizationId, professionalId);
+
+    if (professional.is_active !== 1) {
+      throw httpError(409, 'El profesional no está activo');
+    }
+
+    if (professional.user_account_id) {
+      throw httpError(409, 'El profesional ya tiene una cuenta');
+    }
+
+    if (findByOrganizationIdAndEmail(organizationId, email)) {
+      throw httpError(409, 'Ya existe una cuenta con ese correo');
+    }
+
+    const userAccountId = randomUUID();
+
+    insertUserAccount({
+      id: userAccountId,
+      organizationId,
+      email,
+      passwordHash,
+      role: 'PROFESSIONAL',
+      isActive: 1,
+    });
+
+    linkUserAccount(organizationId, professional.id, userAccountId, new Date().toISOString());
+
+    return {
+      professionalId: professional.id,
+      userAccount: {
+        id: userAccountId,
+        email,
+        role: 'PROFESSIONAL',
+        isActive: 1,
+      },
+    };
+  });
 }
