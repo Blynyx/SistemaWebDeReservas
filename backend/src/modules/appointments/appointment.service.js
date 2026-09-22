@@ -16,6 +16,7 @@ import { findById as findProfessionalById } from '../professionals/professional.
 import { assignmentExists } from '../professionalServices/professionalService.repository.js';
 import { findById as findServiceById } from '../services/service.repository.js';
 import { hasOverlap as hasAvailabilityBlockOverlap } from '../availabilityBlocks/availabilityBlock.repository.js';
+import { createAppointmentEventNotifications } from '../notifications/notification.service.js';
 import { findCoveringSchedule } from '../weeklySchedules/weeklySchedule.repository.js';
 import {
   findAllByOrganization,
@@ -221,7 +222,25 @@ function applyStatusTransition({
     }
 
     updateStatus(organizationId, appointmentId, targetStatus);
-    return toAppointmentResponse(findById(organizationId, appointmentId));
+    const updated = findById(organizationId, appointmentId);
+
+    if (targetStatus === 'CONFIRMADA') {
+      createAppointmentEventNotifications({
+        organizationId,
+        appointment: updated,
+        eventType: 'CONFIRMED',
+      });
+    }
+
+    if (targetStatus === 'CANCELADA') {
+      createAppointmentEventNotifications({
+        organizationId,
+        appointment: updated,
+        eventType: 'CANCELLED',
+      });
+    }
+
+    return toAppointmentResponse(updated);
   });
 }
 
@@ -286,7 +305,14 @@ export function createAppointment(organizationId, body) {
       servicePriceMinorUnits: service.price_minor_units,
     });
 
-    return toAppointmentResponse(findById(organizationId, id));
+    const created = findById(organizationId, id);
+    createAppointmentEventNotifications({
+      organizationId,
+      appointment: created,
+      eventType: 'CREATED',
+    });
+
+    return toAppointmentResponse(created);
   });
 }
 
@@ -400,7 +426,16 @@ export function rescheduleAppointment(organizationId, appointmentId, body, optio
       excludeAppointmentId: appointment.id,
     });
 
+    const previousStartAt = appointment.start_at;
     updateAppointmentSchedule(organizationId, appointmentId, { startAt, endAt });
-    return toAppointmentResponse(findById(organizationId, appointmentId));
+    const updated = findById(organizationId, appointmentId);
+    createAppointmentEventNotifications({
+      organizationId,
+      appointment: updated,
+      eventType: 'RESCHEDULED',
+      previousStartAt,
+    });
+
+    return toAppointmentResponse(updated);
   });
 }
