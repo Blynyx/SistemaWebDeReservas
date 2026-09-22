@@ -82,6 +82,66 @@ export function findAllByOrganization(organizationId) {
     .all(organizationId);
 }
 
+export function findByProfessional(organizationId, professionalId) {
+  return getDb()
+    .prepare(
+      `
+        SELECT ${APPOINTMENT_COLUMNS}
+        FROM appointments
+        WHERE organization_id = ?
+          AND professional_id = ?
+        ORDER BY start_at
+      `
+    )
+    .all(organizationId, professionalId);
+}
+
+export function findByProfessionalInRange(organizationId, professionalId, rangeStart, rangeEnd) {
+  return getDb()
+    .prepare(
+      `
+        SELECT ${APPOINTMENT_COLUMNS}
+        FROM appointments
+        WHERE organization_id = ?
+          AND professional_id = ?
+          AND start_at < ?
+          AND end_at > ?
+        ORDER BY start_at
+      `
+    )
+    .all(organizationId, professionalId, rangeEnd, rangeStart);
+}
+
+export function findByClient(organizationId, clientId) {
+  return getDb()
+    .prepare(
+      `
+        SELECT ${APPOINTMENT_COLUMNS}
+        FROM appointments
+        WHERE organization_id = ?
+          AND client_id = ?
+        ORDER BY start_at
+      `
+    )
+    .all(organizationId, clientId);
+}
+
+export function findByClientInRange(organizationId, clientId, rangeStart, rangeEnd) {
+  return getDb()
+    .prepare(
+      `
+        SELECT ${APPOINTMENT_COLUMNS}
+        FROM appointments
+        WHERE organization_id = ?
+          AND client_id = ?
+          AND start_at < ?
+          AND end_at > ?
+        ORDER BY start_at
+      `
+    )
+    .all(organizationId, clientId, rangeEnd, rangeStart);
+}
+
 export function findActiveByProfessionalInRange(
   organizationId,
   professionalId,

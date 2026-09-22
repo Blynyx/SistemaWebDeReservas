@@ -6,7 +6,9 @@ import {
   getDatePart,
   getDayOfWeek,
   getTimePart,
+  nextDay,
   nowLocalDateTime,
+  parseLocalDate,
   parseLocalDateTime,
 } from '../../utils/datetime.js';
 import { findById as findClientById } from '../clients/client.repository.js';
@@ -17,7 +19,11 @@ import { hasOverlap as hasAvailabilityBlockOverlap } from '../availabilityBlocks
 import { findCoveringSchedule } from '../weeklySchedules/weeklySchedule.repository.js';
 import {
   findAllByOrganization,
+  findByClient,
+  findByClientInRange,
   findById,
+  findByProfessional,
+  findByProfessionalInRange,
   hasActiveOverlap,
   insertAppointment,
   reschedule as updateAppointmentSchedule,
@@ -26,7 +32,7 @@ import {
 
 const ACTIVE_STATUSES = ['PROGRAMADA', 'CONFIRMADA'];
 
-function toAppointmentResponse(row) {
+export function toAppointmentResponse(row) {
   return {
     id: row.id,
     clientId: row.client_id,
@@ -48,6 +54,36 @@ function parseRequiredId(value, fieldName) {
   }
 
   return value.trim();
+}
+
+export function parseOptionalDateRange(query) {
+  const payload = query ?? {};
+  const fromProvided = payload.from !== undefined;
+  const toProvided = payload.to !== undefined;
+
+  if (!fromProvided && !toProvided) {
+    return null;
+  }
+
+  if (!fromProvided || !toProvided) {
+    throw httpError(400, 'from y to deben enviarse juntos');
+  }
+
+  const from = parseLocalDate(payload.from);
+  const to = parseLocalDate(payload.to);
+
+  if (!from || !to) {
+    throw httpError(400, 'from y to deben tener el formato YYYY-MM-DD y ser fechas reales');
+  }
+
+  if (from.value > to.value) {
+    throw httpError(400, 'from debe ser menor o igual que to');
+  }
+
+  return {
+    rangeStart: `${from.value}T00:00`,
+    rangeEnd: `${nextDay(to.value)}T00:00`,
+  };
 }
 
 function parseStartAt(value) {
@@ -158,9 +194,14 @@ function applyStatusTransition({
   allowedFrom,
   forbiddenMessage,
   extraCheck,
+  expectedProfessionalId = null,
 }) {
   return runInImmediateTransaction(() => {
     const appointment = requireTenantAppointment(organizationId, appointmentId);
+
+    if (expectedProfessionalId && appointment.professional_id !== expectedProfessionalId) {
+      throw httpError(404, 'Cita no encontrada');
+    }
 
     if (appointment.status === targetStatus) {
       return toAppointmentResponse(appointment);
@@ -272,7 +313,7 @@ export function cancelAppointment(organizationId, appointmentId) {
   });
 }
 
-export function completeAppointment(organizationId, appointmentId) {
+export function completeAppointment(organizationId, appointmentId, options = {}) {
   return applyStatusTransition({
     organizationId,
     appointmentId,
@@ -280,10 +321,11 @@ export function completeAppointment(organizationId, appointmentId) {
     allowedFrom: ACTIVE_STATUSES,
     forbiddenMessage: 'La cita no se puede completar',
     extraCheck: assertAppointmentHasEnded,
+    expectedProfessionalId: options.expectedProfessionalId ?? null,
   });
 }
 
-export function markNoShowAppointment(organizationId, appointmentId) {
+export function markNoShowAppointment(organizationId, appointmentId, options = {}) {
   return applyStatusTransition({
     organizationId,
     appointmentId,
@@ -291,7 +333,26 @@ export function markNoShowAppointment(organizationId, appointmentId) {
     allowedFrom: ACTIVE_STATUSES,
     forbiddenMessage: 'La cita no se puede marcar como no asistió',
     extraCheck: assertAppointmentHasEnded,
+    expectedProfessionalId: options.expectedProfessionalId ?? null,
   });
+}
+
+export function listAppointmentsByProfessional(organizationId, professionalId, query) {
+  const range = parseOptionalDateRange(query);
+  const rows = range
+    ? findByProfessionalInRange(organizationId, professionalId, range.rangeStart, range.rangeEnd)
+    : findByProfessional(organizationId, professionalId);
+
+  return rows.map(toAppointmentResponse);
+}
+
+export function listAppointmentsByClient(organizationId, clientId, query) {
+  const range = parseOptionalDateRange(query);
+  const rows = range
+    ? findByClientInRange(organizationId, clientId, range.rangeStart, range.rangeEnd)
+    : findByClient(organizationId, clientId);
+
+  return rows.map(toAppointmentResponse);
 }
 
 export function rescheduleAppointment(organizationId, appointmentId, body) {
