@@ -82,6 +82,28 @@ export function findAllByOrganization(organizationId) {
     .all(organizationId);
 }
 
+export function findActiveByProfessionalInRange(
+  organizationId,
+  professionalId,
+  rangeStart,
+  rangeEnd
+) {
+  return getDb()
+    .prepare(
+      `
+        SELECT ${APPOINTMENT_COLUMNS}
+        FROM appointments
+        WHERE organization_id = ?
+          AND professional_id = ?
+          AND status IN ('PROGRAMADA', 'CONFIRMADA')
+          AND start_at < ?
+          AND end_at > ?
+        ORDER BY start_at
+      `
+    )
+    .all(organizationId, professionalId, rangeEnd, rangeStart);
+}
+
 export function hasActiveOverlap({
   organizationId,
   professionalId,

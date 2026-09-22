@@ -31,6 +31,29 @@ export function assignmentExists(organizationId, professionalId, serviceId) {
   return Boolean(findAssignment(organizationId, professionalId, serviceId));
 }
 
+export function findProfessionalsByService(organizationId, serviceId) {
+  return getDb()
+    .prepare(
+      `
+        SELECT
+          p.id,
+          p.organization_id,
+          p.name,
+          p.email,
+          p.phone,
+          p.is_active
+        FROM professional_services AS ps
+        INNER JOIN professionals AS p
+          ON p.organization_id = ps.organization_id
+         AND p.id = ps.professional_id
+        WHERE ps.organization_id = ?
+          AND ps.service_id = ?
+        ORDER BY p.name
+      `
+    )
+    .all(organizationId, serviceId);
+}
+
 export function findServicesByProfessional(organizationId, professionalId) {
   return getDb()
     .prepare(

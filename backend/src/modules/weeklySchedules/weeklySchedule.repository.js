@@ -64,6 +64,21 @@ export function findAllByProfessional(organizationId, professionalId) {
     .all(organizationId, professionalId);
 }
 
+export function findByProfessionalAndDay(organizationId, professionalId, dayOfWeek) {
+  return getDb()
+    .prepare(
+      `
+        SELECT ${SCHEDULE_COLUMNS}
+        FROM weekly_schedules
+        WHERE organization_id = ?
+          AND professional_id = ?
+          AND day_of_week = ?
+        ORDER BY start_time
+      `
+    )
+    .all(organizationId, professionalId, dayOfWeek);
+}
+
 export function findCoveringSchedule(organizationId, professionalId, dayOfWeek, startTime, endTime) {
   return getDb()
     .prepare(

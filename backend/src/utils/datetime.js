@@ -1,4 +1,24 @@
+const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const DATETIME_PATTERN = /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):[0-5]\d$/;
+
+export function parseLocalDate(value) {
+  if (typeof value !== 'string' || !DATE_PATTERN.test(value)) {
+    return null;
+  }
+
+  const [year, month, day] = value.split('-').map(Number);
+  const parsed = new Date(Date.UTC(year, month - 1, day));
+
+  if (
+    parsed.getUTCFullYear() !== year ||
+    parsed.getUTCMonth() !== month - 1 ||
+    parsed.getUTCDate() !== day
+  ) {
+    return null;
+  }
+
+  return { year, month, day, value };
+}
 
 export function parseLocalDateTime(value) {
   if (typeof value !== 'string' || !DATETIME_PATTERN.test(value)) {
@@ -50,6 +70,32 @@ export function getDayOfWeek(startAt) {
   const utcDay = date.getUTCDay();
 
   return utcDay === 0 ? 7 : utcDay;
+}
+
+export function getDayOfWeekFromDate(dateValue) {
+  const parts = parseLocalDate(dateValue);
+
+  if (!parts) {
+    return null;
+  }
+
+  const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+  const utcDay = date.getUTCDay();
+
+  return utcDay === 0 ? 7 : utcDay;
+}
+
+export function nextDay(dateValue) {
+  const parts = parseLocalDate(dateValue);
+
+  if (!parts) {
+    return null;
+  }
+
+  const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+  date.setUTCDate(date.getUTCDate() + 1);
+
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`;
 }
 
 export function getDatePart(dateTime) {
