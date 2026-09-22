@@ -1,5 +1,7 @@
 import {
+  cancelMyAppointment,
   completeMyAppointment,
+  createMyAppointment,
   createMyAvailabilityBlock,
   getMyClient,
   getMyProfessional,
@@ -9,6 +11,7 @@ import {
   markMyAppointmentNoShow,
   patchMyAvailabilityBlock,
   removeMyAvailabilityBlock,
+  rescheduleMyAppointment,
 } from './self.service.js';
 
 export function getMyProfessionalController(req, res, next) {
@@ -40,6 +43,38 @@ export function listMyProfessionalAppointmentsController(req, res, next) {
   }
 }
 
+export function createMyAppointmentController(req, res, next) {
+  try {
+    const result = createMyAppointment(req.user.organizationId, req.domain.id, req.body);
+    res.status(201).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function cancelMyAppointmentController(req, res, next) {
+  try {
+    const result = cancelMyAppointment(req.user.organizationId, req.domain.id, req.params.id);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export function rescheduleMyAppointmentController(req, res, next) {
+  try {
+    const result = rescheduleMyAppointment(
+      req.user.organizationId,
+      req.domain.id,
+      req.params.id,
+      req.body
+    );
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export function listMyClientAppointmentsController(req, res, next) {
   try {
     const appointments = listMyClientAppointments(
@@ -55,11 +90,7 @@ export function listMyClientAppointmentsController(req, res, next) {
 
 export function completeMyAppointmentController(req, res, next) {
   try {
-    const result = completeMyAppointment(
-      req.user.organizationId,
-      req.domain.id,
-      req.params.id
-    );
+    const result = completeMyAppointment(req.user.organizationId, req.domain.id, req.params.id);
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -68,11 +99,7 @@ export function completeMyAppointmentController(req, res, next) {
 
 export function markMyAppointmentNoShowController(req, res, next) {
   try {
-    const result = markMyAppointmentNoShow(
-      req.user.organizationId,
-      req.domain.id,
-      req.params.id
-    );
+    const result = markMyAppointmentNoShow(req.user.organizationId, req.domain.id, req.params.id);
     res.status(200).json(result);
   } catch (error) {
     next(error);
@@ -81,11 +108,7 @@ export function markMyAppointmentNoShowController(req, res, next) {
 
 export function createMyAvailabilityBlockController(req, res, next) {
   try {
-    const result = createMyAvailabilityBlock(
-      req.user.organizationId,
-      req.domain.id,
-      req.body
-    );
+    const result = createMyAvailabilityBlock(req.user.organizationId, req.domain.id, req.body);
     res.status(201).json(result);
   } catch (error) {
     next(error);

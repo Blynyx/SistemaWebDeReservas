@@ -5,7 +5,9 @@ import {
   requireProfessionalIdentity,
 } from '../../middleware/domainIdentity.middleware.js';
 import {
+  cancelMyAppointmentController,
   completeMyAppointmentController,
+  createMyAppointmentController,
   createMyAvailabilityBlockController,
   deleteMyAvailabilityBlockController,
   getMyClientController,
@@ -15,6 +17,7 @@ import {
   listMyProfessionalAppointmentsController,
   markMyAppointmentNoShowController,
   patchMyAvailabilityBlockController,
+  rescheduleMyAppointmentController,
 } from './self.controller.js';
 
 const router = Router();
@@ -69,11 +72,29 @@ router.delete(
 );
 
 router.get('/client', authMiddleware, requireClientIdentity, getMyClientController);
+router.post(
+  '/client/appointments',
+  authMiddleware,
+  requireClientIdentity,
+  createMyAppointmentController
+);
 router.get(
   '/client/appointments',
   authMiddleware,
   requireClientIdentity,
   listMyClientAppointmentsController
+);
+router.patch(
+  '/client/appointments/:id/cancel',
+  authMiddleware,
+  requireClientIdentity,
+  cancelMyAppointmentController
+);
+router.patch(
+  '/client/appointments/:id/reschedule',
+  authMiddleware,
+  requireClientIdentity,
+  rescheduleMyAppointmentController
 );
 
 export default router;

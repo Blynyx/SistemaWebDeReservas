@@ -8,7 +8,7 @@ const router = Router();
 router.get(
   '/',
   authMiddleware,
-  authorizeRoles('ADMIN', 'RECEPTIONIST'),
+  authorizeRoles('ADMIN', 'RECEPTIONIST', 'CLIENT'),
   getAvailabilityController
 );
 

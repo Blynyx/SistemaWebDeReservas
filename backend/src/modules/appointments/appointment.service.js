@@ -195,11 +195,16 @@ function applyStatusTransition({
   forbiddenMessage,
   extraCheck,
   expectedProfessionalId = null,
+  expectedClientId = null,
 }) {
   return runInImmediateTransaction(() => {
     const appointment = requireTenantAppointment(organizationId, appointmentId);
 
     if (expectedProfessionalId && appointment.professional_id !== expectedProfessionalId) {
+      throw httpError(404, 'Cita no encontrada');
+    }
+
+    if (expectedClientId && appointment.client_id !== expectedClientId) {
       throw httpError(404, 'Cita no encontrada');
     }
 
@@ -285,6 +290,15 @@ export function createAppointment(organizationId, body) {
   });
 }
 
+export function createOwnAppointment(organizationId, clientId, body) {
+  return createAppointment(organizationId, {
+    clientId,
+    professionalId: body?.professionalId,
+    serviceId: body?.serviceId,
+    startAt: body?.startAt,
+  });
+}
+
 export function listAppointments(organizationId) {
   return findAllByOrganization(organizationId).map(toAppointmentResponse);
 }
@@ -303,13 +317,14 @@ export function confirmAppointment(organizationId, appointmentId) {
   });
 }
 
-export function cancelAppointment(organizationId, appointmentId) {
+export function cancelAppointment(organizationId, appointmentId, options = {}) {
   return applyStatusTransition({
     organizationId,
     appointmentId,
     targetStatus: 'CANCELADA',
     allowedFrom: ACTIVE_STATUSES,
     forbiddenMessage: 'La cita no se puede cancelar',
+    expectedClientId: options.expectedClientId ?? null,
   });
 }
 
@@ -355,11 +370,15 @@ export function listAppointmentsByClient(organizationId, clientId, query) {
   return rows.map(toAppointmentResponse);
 }
 
-export function rescheduleAppointment(organizationId, appointmentId, body) {
+export function rescheduleAppointment(organizationId, appointmentId, body, options = {}) {
   const startAt = parseStartAt(body?.startAt);
 
   return runInImmediateTransaction(() => {
     const appointment = requireTenantAppointment(organizationId, appointmentId);
+
+    if (options.expectedClientId && appointment.client_id !== options.expectedClientId) {
+      throw httpError(404, 'Cita no encontrada');
+    }
 
     if (!ACTIVE_STATUSES.includes(appointment.status)) {
       throw httpError(409, 'La cita no se puede reprogramar');

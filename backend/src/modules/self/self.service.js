@@ -1,8 +1,11 @@
 import {
+  cancelAppointment,
   completeAppointment,
+  createOwnAppointment,
   listAppointmentsByClient,
   listAppointmentsByProfessional,
   markNoShowAppointment,
+  rescheduleAppointment,
 } from '../appointments/appointment.service.js';
 import {
   createAvailabilityBlock,
@@ -41,6 +44,25 @@ export function listMyProfessionalAppointments(organizationId, professionalId, q
 
 export function listMyClientAppointments(organizationId, clientId, query) {
   return listAppointmentsByClient(organizationId, clientId, query);
+}
+
+export function createMyAppointment(organizationId, clientId, body) {
+  return createOwnAppointment(organizationId, clientId, body);
+}
+
+export function cancelMyAppointment(organizationId, clientId, appointmentId) {
+  return cancelAppointment(organizationId, appointmentId, {
+    expectedClientId: clientId,
+  });
+}
+
+export function rescheduleMyAppointment(organizationId, clientId, appointmentId, body) {
+  return rescheduleAppointment(
+    organizationId,
+    appointmentId,
+    { startAt: body?.startAt },
+    { expectedClientId: clientId }
+  );
 }
 
 export function completeMyAppointment(organizationId, professionalId, appointmentId) {
