@@ -6,6 +6,7 @@ import {
   getDatePart,
   getDayOfWeek,
   getTimePart,
+  nowLocalDateTime,
   parseLocalDateTime,
 } from '../../utils/datetime.js';
 import { findById as findClientById } from '../clients/client.repository.js';
@@ -19,7 +20,11 @@ import {
   findById,
   hasActiveOverlap,
   insertAppointment,
+  reschedule as updateAppointmentSchedule,
+  updateStatus,
 } from './appointment.repository.js';
+
+const ACTIVE_STATUSES = ['PROGRAMADA', 'CONFIRMADA'];
 
 function toAppointmentResponse(row) {
   return {
@@ -67,6 +72,119 @@ function requireActiveResource(resource, notFoundMessage, inactiveMessage) {
   return resource;
 }
 
+function requireTenantAppointment(organizationId, appointmentId) {
+  const appointment = findById(organizationId, appointmentId);
+
+  if (!appointment) {
+    throw httpError(404, 'Cita no encontrada');
+  }
+
+  return appointment;
+}
+
+function assertActiveBookingResources(organizationId, appointment) {
+  requireActiveResource(
+    findClientById(organizationId, appointment.client_id),
+    'Cliente no encontrado',
+    'El cliente no está activo'
+  );
+  requireActiveResource(
+    findProfessionalById(organizationId, appointment.professional_id),
+    'Profesional no encontrado',
+    'El profesional no está activo'
+  );
+  requireActiveResource(
+    findServiceById(organizationId, appointment.service_id),
+    'Servicio no encontrado',
+    'El servicio no está activo'
+  );
+
+  if (!assignmentExists(organizationId, appointment.professional_id, appointment.service_id)) {
+    throw httpError(409, 'El profesional no está habilitado para este servicio');
+  }
+}
+
+function assertSlotAvailable({
+  organizationId,
+  professionalId,
+  startAt,
+  endAt,
+  excludeAppointmentId = null,
+}) {
+  if (getDatePart(startAt) !== getDatePart(endAt)) {
+    throw httpError(409, 'La cita debe comenzar y terminar el mismo día');
+  }
+
+  const coveringSchedule = findCoveringSchedule(
+    organizationId,
+    professionalId,
+    getDayOfWeek(startAt),
+    getTimePart(startAt),
+    getTimePart(endAt)
+  );
+
+  if (!coveringSchedule) {
+    throw httpError(409, 'La cita no cabe en el horario semanal del profesional');
+  }
+
+  if (
+    hasAvailabilityBlockOverlap({
+      organizationId,
+      professionalId,
+      startAt,
+      endAt,
+    })
+  ) {
+    throw httpError(409, 'La cita intersecta un bloque de indisponibilidad');
+  }
+
+  if (
+    hasActiveOverlap({
+      organizationId,
+      professionalId,
+      startAt,
+      endAt,
+      excludeAppointmentId,
+    })
+  ) {
+    throw httpError(409, 'El profesional ya tiene una cita en ese horario');
+  }
+}
+
+function applyStatusTransition({
+  organizationId,
+  appointmentId,
+  targetStatus,
+  allowedFrom,
+  forbiddenMessage,
+  extraCheck,
+}) {
+  return runInImmediateTransaction(() => {
+    const appointment = requireTenantAppointment(organizationId, appointmentId);
+
+    if (appointment.status === targetStatus) {
+      return toAppointmentResponse(appointment);
+    }
+
+    if (!allowedFrom.includes(appointment.status)) {
+      throw httpError(409, forbiddenMessage);
+    }
+
+    if (extraCheck) {
+      extraCheck(appointment);
+    }
+
+    updateStatus(organizationId, appointmentId, targetStatus);
+    return toAppointmentResponse(findById(organizationId, appointmentId));
+  });
+}
+
+function assertAppointmentHasEnded(appointment) {
+  if (nowLocalDateTime() < appointment.end_at) {
+    throw httpError(409, 'La cita aún no ha terminado');
+  }
+}
+
 export function createAppointment(organizationId, body) {
   const payload = body ?? {};
   const clientId = parseRequiredId(payload.clientId, 'clientId');
@@ -97,36 +215,16 @@ export function createAppointment(organizationId, body) {
 
     const endAt = addMinutes(startAt, service.duration_minutes);
 
-    if (!endAt || getDatePart(startAt) !== getDatePart(endAt)) {
-      throw httpError(409, 'La cita debe comenzar y terminar el mismo día');
+    if (!endAt) {
+      throw httpError(400, 'startAt debe tener el formato YYYY-MM-DDTHH:mm y ser una fecha real');
     }
 
-    const coveringSchedule = findCoveringSchedule(
+    assertSlotAvailable({
       organizationId,
-      professional.id,
-      getDayOfWeek(startAt),
-      getTimePart(startAt),
-      getTimePart(endAt)
-    );
-
-    if (!coveringSchedule) {
-      throw httpError(409, 'La cita no cabe en el horario semanal del profesional');
-    }
-
-    if (
-      hasAvailabilityBlockOverlap({
-        organizationId,
-        professionalId: professional.id,
-        startAt,
-        endAt,
-      })
-    ) {
-      throw httpError(409, 'La cita intersecta un bloque de indisponibilidad');
-    }
-
-    if (hasActiveOverlap(organizationId, professional.id, startAt, endAt)) {
-      throw httpError(409, 'El profesional ya tiene una cita en ese horario');
-    }
+      professionalId: professional.id,
+      startAt,
+      endAt,
+    });
 
     const id = randomUUID();
 
@@ -151,11 +249,78 @@ export function listAppointments(organizationId) {
 }
 
 export function getAppointment(organizationId, appointmentId) {
-  const appointment = findById(organizationId, appointmentId);
+  return toAppointmentResponse(requireTenantAppointment(organizationId, appointmentId));
+}
 
-  if (!appointment) {
-    throw httpError(404, 'Cita no encontrada');
-  }
+export function confirmAppointment(organizationId, appointmentId) {
+  return applyStatusTransition({
+    organizationId,
+    appointmentId,
+    targetStatus: 'CONFIRMADA',
+    allowedFrom: ['PROGRAMADA'],
+    forbiddenMessage: 'La cita no se puede confirmar',
+  });
+}
 
-  return toAppointmentResponse(appointment);
+export function cancelAppointment(organizationId, appointmentId) {
+  return applyStatusTransition({
+    organizationId,
+    appointmentId,
+    targetStatus: 'CANCELADA',
+    allowedFrom: ACTIVE_STATUSES,
+    forbiddenMessage: 'La cita no se puede cancelar',
+  });
+}
+
+export function completeAppointment(organizationId, appointmentId) {
+  return applyStatusTransition({
+    organizationId,
+    appointmentId,
+    targetStatus: 'COMPLETADA',
+    allowedFrom: ACTIVE_STATUSES,
+    forbiddenMessage: 'La cita no se puede completar',
+    extraCheck: assertAppointmentHasEnded,
+  });
+}
+
+export function markNoShowAppointment(organizationId, appointmentId) {
+  return applyStatusTransition({
+    organizationId,
+    appointmentId,
+    targetStatus: 'NO_ASISTIO',
+    allowedFrom: ACTIVE_STATUSES,
+    forbiddenMessage: 'La cita no se puede marcar como no asistió',
+    extraCheck: assertAppointmentHasEnded,
+  });
+}
+
+export function rescheduleAppointment(organizationId, appointmentId, body) {
+  const startAt = parseStartAt(body?.startAt);
+
+  return runInImmediateTransaction(() => {
+    const appointment = requireTenantAppointment(organizationId, appointmentId);
+
+    if (!ACTIVE_STATUSES.includes(appointment.status)) {
+      throw httpError(409, 'La cita no se puede reprogramar');
+    }
+
+    assertActiveBookingResources(organizationId, appointment);
+
+    const endAt = addMinutes(startAt, appointment.service_duration_minutes);
+
+    if (!endAt) {
+      throw httpError(400, 'startAt debe tener el formato YYYY-MM-DDTHH:mm y ser una fecha real');
+    }
+
+    assertSlotAvailable({
+      organizationId,
+      professionalId: appointment.professional_id,
+      startAt,
+      endAt,
+      excludeAppointmentId: appointment.id,
+    });
+
+    updateAppointmentSchedule(organizationId, appointmentId, { startAt, endAt });
+    return toAppointmentResponse(findById(organizationId, appointmentId));
+  });
 }

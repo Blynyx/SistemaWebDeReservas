@@ -82,7 +82,13 @@ export function findAllByOrganization(organizationId) {
     .all(organizationId);
 }
 
-export function hasActiveOverlap(organizationId, professionalId, startAt, endAt) {
+export function hasActiveOverlap({
+  organizationId,
+  professionalId,
+  startAt,
+  endAt,
+  excludeAppointmentId = null,
+}) {
   const row = getDb()
     .prepare(
       `
@@ -93,9 +99,44 @@ export function hasActiveOverlap(organizationId, professionalId, startAt, endAt)
           AND status IN ('PROGRAMADA', 'CONFIRMADA')
           AND start_at < ?
           AND end_at > ?
+          AND (? IS NULL OR id != ?)
       `
     )
-    .get(organizationId, professionalId, endAt, startAt);
+    .get(
+      organizationId,
+      professionalId,
+      endAt,
+      startAt,
+      excludeAppointmentId,
+      excludeAppointmentId
+    );
 
   return Boolean(row);
+}
+
+export function updateStatus(organizationId, appointmentId, status) {
+  getDb()
+    .prepare(
+      `
+        UPDATE appointments
+        SET status = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE organization_id = ? AND id = ?
+      `
+    )
+    .run(status, organizationId, appointmentId);
+}
+
+export function reschedule(organizationId, appointmentId, { startAt, endAt }) {
+  getDb()
+    .prepare(
+      `
+        UPDATE appointments
+        SET start_at = ?,
+            end_at = ?,
+            status = 'PROGRAMADA',
+            updated_at = CURRENT_TIMESTAMP
+        WHERE organization_id = ? AND id = ?
+      `
+    )
+    .run(startAt, endAt, organizationId, appointmentId);
 }

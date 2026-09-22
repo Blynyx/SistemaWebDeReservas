@@ -59,3 +59,11 @@ export function getDatePart(dateTime) {
 export function getTimePart(dateTime) {
   return dateTime.slice(11, 16);
 }
+
+// En esta etapa se asume que el servidor opera en la misma zona
+// horaria operativa que la organización. No usar toISOString().
+export function nowLocalDateTime() {
+  const now = new Date();
+
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
