@@ -14,6 +14,7 @@ export const ROLE_LABELS = {
 
 export const PROTECTED_ROUTES = {
   '/dashboard': ['ADMIN', 'RECEPTIONIST'],
+  '/citas': ['ADMIN', 'RECEPTIONIST'],
   '/agenda': ['PROFESSIONAL'],
   '/mis-citas': ['CLIENT'],
 };

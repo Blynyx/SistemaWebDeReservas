@@ -1,5 +1,5 @@
-import { renderHomeView } from './home.view.js';
+import { renderDashboardView } from './dashboard.view.js';
 
 export function renderReceptionistHomeView(root, session) {
-  renderHomeView(root, session);
+  renderDashboardView(root, session);
 }

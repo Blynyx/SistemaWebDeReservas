@@ -1,29 +1,29 @@
 const NAV_BY_ROLE = {
   ADMIN: [
-    { href: '#/dashboard', label: 'Dashboard', active: true },
-    { label: 'Citas' },
+    { href: '#/dashboard', label: 'Dashboard' },
+    { href: '#/citas', label: 'Citas' },
     { label: 'Clientes' },
     { label: 'Profesionales' },
     { label: 'Servicios' },
   ],
   RECEPTIONIST: [
-    { href: '#/dashboard', label: 'Dashboard', active: true },
-    { label: 'Citas' },
+    { href: '#/dashboard', label: 'Dashboard' },
+    { href: '#/citas', label: 'Citas' },
     { label: 'Clientes' },
   ],
   PROFESSIONAL: [
-    { href: '#/agenda', label: 'Mi agenda', active: true },
+    { href: '#/agenda', label: 'Mi agenda' },
     { label: 'Mis bloqueos' },
     { label: 'Notificaciones' },
   ],
   CLIENT: [
-    { href: '#/mis-citas', label: 'Mis citas', active: true },
+    { href: '#/mis-citas', label: 'Mis citas' },
     { label: 'Reservar' },
     { label: 'Notificaciones' },
   ],
 };
 
-export function createSidebar(role) {
+export function createSidebar(role, currentPath = '') {
   const nav = document.createElement('nav');
   nav.className = 'app-sidebar';
   nav.setAttribute('aria-label', 'Navegación principal');
@@ -38,9 +38,6 @@ export function createSidebar(role) {
       const link = document.createElement('a');
       link.href = item.href;
       link.className = 'app-sidebar__link';
-      if (item.active) {
-        link.setAttribute('aria-current', 'page');
-      }
       link.textContent = item.label;
       entry.append(link);
     } else {
@@ -54,5 +51,20 @@ export function createSidebar(role) {
   }
 
   nav.append(list);
+  updateSidebarActive(nav, currentPath);
   return nav;
+}
+
+export function updateSidebarActive(nav, currentPath) {
+  for (const link of nav.querySelectorAll('a.app-sidebar__link')) {
+    const path = link.getAttribute('href')?.startsWith('#')
+      ? link.getAttribute('href').slice(1)
+      : link.getAttribute('href');
+
+    if (path === currentPath) {
+      link.setAttribute('aria-current', 'page');
+    } else {
+      link.removeAttribute('aria-current');
+    }
+  }
 }

@@ -104,7 +104,8 @@ input {
   font-weight: 600;
 }
 
-.form-field input {
+.form-field input,
+.form-field select {
   width: 100%;
   min-height: 2.75rem;
   padding: 0.6rem 0.75rem;

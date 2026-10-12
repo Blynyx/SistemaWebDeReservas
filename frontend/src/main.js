@@ -1,28 +1,32 @@
 import './styles/main.css';
 import './styles/auth.css';
 import './styles/layout.css';
+import './styles/dashboard.css';
+import './styles/appointments.css';
 import { setUnauthorizedHandler } from './api/apiClient.js';
 import { login, logout, restoreSession } from './auth/auth.service.js';
 import { getSession } from './auth/session.js';
 import { createAppShell } from './components/appShell.js';
 import { navigate, startRouter } from './router/router.js';
 import { getRoleHome } from './router/routes.js';
-import { renderAdminHomeView } from './views/adminHome.view.js';
+import { renderAppointmentsView } from './views/appointments.view.js';
 import { renderClientHomeView } from './views/clientHome.view.js';
+import { renderDashboardView } from './views/dashboard.view.js';
 import { renderLoginView } from './views/login.view.js';
 import { renderNotFoundView } from './views/notFound.view.js';
 import { renderProfessionalHomeView } from './views/professionalHome.view.js';
-import { renderReceptionistHomeView } from './views/receptionistHome.view.js';
 
 const appRoot = document.querySelector('#app');
 const HOME_RENDERERS = {
-  '/dashboard': renderStaffHome,
+  '/dashboard': renderDashboardView,
+  '/citas': renderAppointmentsView,
   '/agenda': renderProfessionalHomeView,
   '/mis-citas': renderClientHomeView,
 };
 
 let loginMessage = '';
 let appMain = null;
+let setActivePath = null;
 
 setUnauthorizedHandler(() => {
   logout();
@@ -33,6 +37,7 @@ setUnauthorizedHandler(() => {
 
 function destroyShell() {
   appMain = null;
+  setActivePath = null;
   appRoot.replaceChildren();
 }
 
@@ -44,14 +49,16 @@ function showBootState(text) {
   appRoot.append(status);
 }
 
-function ensureShell(session) {
+function ensureShell(session, currentPath) {
   if (appMain && appRoot.querySelector('.app-shell')) {
+    setActivePath?.(currentPath);
     return appMain;
   }
 
-  const { shell, main } = createAppShell({
+  const created = createAppShell({
     organization: session.organization,
     user: session.user,
+    currentPath,
     onLogout() {
       logout();
       destroyShell();
@@ -60,18 +67,10 @@ function ensureShell(session) {
     },
   });
 
-  appRoot.replaceChildren(shell);
-  appMain = main;
-  return main;
-}
-
-function renderStaffHome(root, session) {
-  if (session.user.role === 'RECEPTIONIST') {
-    renderReceptionistHomeView(root, session);
-    return;
-  }
-
-  renderAdminHomeView(root, session);
+  appRoot.replaceChildren(created.shell);
+  appMain = created.main;
+  setActivePath = created.setActivePath;
+  return created.main;
 }
 
 function renderApp(route) {
@@ -95,7 +94,7 @@ function renderApp(route) {
     return;
   }
 
-  const main = ensureShell(session);
+  const main = ensureShell(session, route.path);
   const renderHome = HOME_RENDERERS[route.path];
 
   if (route.notFound || !renderHome) {

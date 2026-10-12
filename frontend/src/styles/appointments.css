@@ -1,0 +1,115 @@
+.filters-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+  background: var(--surface);
+}
+
+.filters-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: end;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--surface);
+}
+
+.data-table th,
+.data-table td {
+  padding: 0.7rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.data-table__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.status-badge {
+  display: inline-flex;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.status-badge--PROGRAMADA {
+  background: #efe6d4;
+  color: #7a5720;
+}
+
+.status-badge--CONFIRMADA {
+  background: #e6f2f1;
+  color: var(--brand-dark);
+}
+
+.status-badge--COMPLETADA {
+  background: #e4eddf;
+  color: #35552c;
+}
+
+.status-badge--CANCELADA {
+  background: #f3e0e0;
+  color: var(--danger);
+}
+
+.status-badge--NO_ASISTIO {
+  background: #ece6f3;
+  color: #572a7a;
+}
+
+.button--small {
+  min-height: 2.1rem;
+  padding: 0.3rem 0.65rem;
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+.button--danger {
+  background: #fff;
+  border-color: #d9a3a3;
+  color: var(--danger);
+}
+
+.reschedule-dialog {
+  width: min(100%, 28rem);
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+}
+
+.reschedule-dialog__summary {
+  margin: 0.4rem 0 1rem;
+  color: var(--muted);
+}
+
+.reschedule-dialog__form,
+.reschedule-dialog__actions {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.reschedule-dialog__actions {
+  grid-template-columns: auto auto;
+  justify-content: start;
+}
+
+@media (max-width: 900px) {
+  .filters-form {
+    grid-template-columns: 1fr;
+  }
+}
