@@ -1,0 +1,29 @@
+.login-page {
+  display: grid;
+  min-height: 100vh;
+  padding: 1.5rem;
+  place-items: center;
+}
+
+.login-card {
+  width: min(100%, 26rem);
+  padding: 2rem 1.6rem;
+  border: 1px solid var(--line);
+  border-radius: 1.1rem;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.login-card h1 {
+  font-size: 1.55rem;
+}
+
+.login-card__subtitle {
+  margin: 0.4rem 0 1.4rem;
+  color: var(--muted);
+}
+
+.login-form {
+  display: grid;
+  gap: 1rem;
+}
