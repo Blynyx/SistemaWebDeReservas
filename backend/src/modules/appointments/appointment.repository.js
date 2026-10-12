@@ -82,6 +82,49 @@ export function findAllByOrganization(organizationId) {
     .all(organizationId);
 }
 
+export function findByFilters(organizationId, filters = {}) {
+  const clauses = ['organization_id = ?'];
+  const values = [organizationId];
+
+  if (filters.clientId) {
+    clauses.push('client_id = ?');
+    values.push(filters.clientId);
+  }
+
+  if (filters.professionalId) {
+    clauses.push('professional_id = ?');
+    values.push(filters.professionalId);
+  }
+
+  if (filters.serviceId) {
+    clauses.push('service_id = ?');
+    values.push(filters.serviceId);
+  }
+
+  if (filters.status) {
+    clauses.push('status = ?');
+    values.push(filters.status);
+  }
+
+  if (filters.rangeStart && filters.rangeEnd) {
+    clauses.push('start_at < ?');
+    values.push(filters.rangeEnd);
+    clauses.push('end_at > ?');
+    values.push(filters.rangeStart);
+  }
+
+  return getDb()
+    .prepare(
+      `
+        SELECT ${APPOINTMENT_COLUMNS}
+        FROM appointments
+        WHERE ${clauses.join(' AND ')}
+        ORDER BY start_at ASC, id ASC
+      `
+    )
+    .all(...values);
+}
+
 export function findByProfessional(organizationId, professionalId) {
   return getDb()
     .prepare(

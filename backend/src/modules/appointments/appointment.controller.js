@@ -20,7 +20,7 @@ export function createAppointmentController(req, res, next) {
 
 export function listAppointmentsController(req, res, next) {
   try {
-    const appointments = listAppointments(req.user.organizationId);
+    const appointments = listAppointments(req.user.organizationId, req.query);
     res.status(200).json({ appointments });
   } catch (error) {
     next(error);

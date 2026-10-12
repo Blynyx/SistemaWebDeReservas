@@ -19,9 +19,9 @@ import { hasOverlap as hasAvailabilityBlockOverlap } from '../availabilityBlocks
 import { createAppointmentEventNotifications } from '../notifications/notification.service.js';
 import { findCoveringSchedule } from '../weeklySchedules/weeklySchedule.repository.js';
 import {
-  findAllByOrganization,
   findByClient,
   findByClientInRange,
+  findByFilters,
   findById,
   findByProfessional,
   findByProfessionalInRange,
@@ -32,6 +32,13 @@ import {
 } from './appointment.repository.js';
 
 const ACTIVE_STATUSES = ['PROGRAMADA', 'CONFIRMADA'];
+const APPOINTMENT_STATUSES = [
+  'PROGRAMADA',
+  'CONFIRMADA',
+  'COMPLETADA',
+  'CANCELADA',
+  'NO_ASISTIO',
+];
 
 export function toAppointmentResponse(row) {
   return {
@@ -85,6 +92,30 @@ export function parseOptionalDateRange(query) {
     rangeStart: `${from.value}T00:00`,
     rangeEnd: `${nextDay(to.value)}T00:00`,
   };
+}
+
+function parseOptionalFilterId(value, fieldName) {
+  if (value === undefined) {
+    return null;
+  }
+
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw httpError(400, `${fieldName} debe ser un identificador no vacío`);
+  }
+
+  return value.trim();
+}
+
+function parseOptionalStatus(value) {
+  if (value === undefined) {
+    return null;
+  }
+
+  if (!APPOINTMENT_STATUSES.includes(value)) {
+    throw httpError(400, 'status no es válido');
+  }
+
+  return value;
 }
 
 function parseStartAt(value) {
@@ -325,8 +356,21 @@ export function createOwnAppointment(organizationId, clientId, body) {
   });
 }
 
-export function listAppointments(organizationId) {
-  return findAllByOrganization(organizationId).map(toAppointmentResponse);
+export function listAppointments(organizationId, query) {
+  const range = parseOptionalDateRange(query);
+  const filters = {
+    clientId: parseOptionalFilterId(query?.clientId, 'clientId'),
+    professionalId: parseOptionalFilterId(query?.professionalId, 'professionalId'),
+    serviceId: parseOptionalFilterId(query?.serviceId, 'serviceId'),
+    status: parseOptionalStatus(query?.status),
+  };
+
+  if (range) {
+    filters.rangeStart = range.rangeStart;
+    filters.rangeEnd = range.rangeEnd;
+  }
+
+  return findByFilters(organizationId, filters).map(toAppointmentResponse);
 }
 
 export function getAppointment(organizationId, appointmentId) {
