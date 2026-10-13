@@ -2,14 +2,14 @@ const NAV_BY_ROLE = {
   ADMIN: [
     { href: '#/dashboard', label: 'Dashboard' },
     { href: '#/citas', label: 'Citas' },
-    { label: 'Clientes' },
+    { href: '#/clientes', label: 'Clientes' },
     { label: 'Profesionales' },
     { label: 'Servicios' },
   ],
   RECEPTIONIST: [
     { href: '#/dashboard', label: 'Dashboard' },
     { href: '#/citas', label: 'Citas' },
-    { label: 'Clientes' },
+    { href: '#/clientes', label: 'Clientes' },
   ],
   PROFESSIONAL: [
     { href: '#/agenda', label: 'Mi agenda' },

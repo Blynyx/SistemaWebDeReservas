@@ -1,0 +1,50 @@
+.clients-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.client-status-badge--active {
+  background: #e4eddf;
+  color: #35552c;
+}
+
+.client-status-badge--inactive {
+  background: #ece8e2;
+  color: #5b6b74;
+}
+
+.client-dialog {
+  width: min(100%, 28rem);
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+}
+
+.client-dialog__lead,
+.client-dialog__hint {
+  margin: 0.4rem 0 1rem;
+  color: var(--muted);
+}
+
+.client-dialog__form,
+.client-dialog__actions {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.client-dialog__actions {
+  grid-template-columns: auto auto;
+  justify-content: start;
+}
+
+@media (max-width: 640px) {
+  .client-dialog {
+    width: calc(100% - 1.5rem);
+    max-width: none;
+  }
+
+  .client-dialog__actions {
+    grid-template-columns: 1fr;
+  }
+}
