@@ -4,7 +4,7 @@ const NAV_BY_ROLE = {
     { href: '#/citas', label: 'Citas' },
     { href: '#/clientes', label: 'Clientes' },
     { label: 'Profesionales' },
-    { label: 'Servicios' },
+    { href: '#/servicios', label: 'Servicios' },
   ],
   RECEPTIONIST: [
     { href: '#/dashboard', label: 'Dashboard' },

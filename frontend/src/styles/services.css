@@ -1,0 +1,59 @@
+.services-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.services-cost-note {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.service-status-badge--active {
+  background: #e4eddf;
+  color: #35552c;
+}
+
+.service-status-badge--inactive {
+  background: #ece8e2;
+  color: #5b6b74;
+}
+
+.service-dialog {
+  width: min(100%, 28rem);
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+}
+
+.service-dialog__form,
+.service-dialog__actions {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.service-dialog__actions {
+  grid-template-columns: auto auto;
+  justify-content: start;
+}
+
+.service-dialog textarea {
+  width: 100%;
+  min-height: 5.5rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: #fff;
+  resize: vertical;
+}
+
+@media (max-width: 640px) {
+  .service-dialog {
+    width: calc(100% - 1.5rem);
+    max-width: none;
+  }
+
+  .service-dialog__actions {
+    grid-template-columns: 1fr;
+  }
+}

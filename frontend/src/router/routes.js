@@ -16,6 +16,7 @@ export const PROTECTED_ROUTES = {
   '/dashboard': ['ADMIN', 'RECEPTIONIST'],
   '/citas': ['ADMIN', 'RECEPTIONIST'],
   '/clientes': ['ADMIN', 'RECEPTIONIST'],
+  '/servicios': ['ADMIN'],
   '/agenda': ['PROFESSIONAL'],
   '/mis-citas': ['CLIENT'],
 };
