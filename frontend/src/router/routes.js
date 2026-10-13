@@ -17,6 +17,7 @@ export const PROTECTED_ROUTES = {
   '/citas': ['ADMIN', 'RECEPTIONIST'],
   '/clientes': ['ADMIN', 'RECEPTIONIST'],
   '/servicios': ['ADMIN'],
+  '/profesionales': ['ADMIN'],
   '/agenda': ['PROFESSIONAL'],
   '/mis-citas': ['CLIENT'],
 };

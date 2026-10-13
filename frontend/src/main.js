@@ -5,6 +5,7 @@ import './styles/dashboard.css';
 import './styles/appointments.css';
 import './styles/clients.css';
 import './styles/services.css';
+import './styles/professionals.css';
 import { setUnauthorizedHandler } from './api/apiClient.js';
 import { login, logout, restoreSession } from './auth/auth.service.js';
 import { getSession } from './auth/session.js';
@@ -18,6 +19,7 @@ import { renderDashboardView } from './views/dashboard.view.js';
 import { renderLoginView } from './views/login.view.js';
 import { renderNotFoundView } from './views/notFound.view.js';
 import { renderProfessionalHomeView } from './views/professionalHome.view.js';
+import { renderProfessionalsView } from './views/professionals.view.js';
 import { renderServicesView } from './views/services.view.js';
 
 const appRoot = document.querySelector('#app');
@@ -26,6 +28,7 @@ const HOME_RENDERERS = {
   '/citas': renderAppointmentsView,
   '/clientes': renderClientsView,
   '/servicios': renderServicesView,
+  '/profesionales': renderProfessionalsView,
   '/agenda': renderProfessionalHomeView,
   '/mis-citas': renderClientHomeView,
 };

@@ -1,0 +1,50 @@
+.professionals-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.professional-status-badge--active {
+  background: #e4eddf;
+  color: #35552c;
+}
+
+.professional-status-badge--inactive {
+  background: #ece8e2;
+  color: #5b6b74;
+}
+
+.professional-dialog {
+  width: min(100%, 28rem);
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+}
+
+.professional-dialog__lead,
+.professional-dialog__hint {
+  margin: 0.4rem 0 1rem;
+  color: var(--muted);
+}
+
+.professional-dialog__form,
+.professional-dialog__actions {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.professional-dialog__actions {
+  grid-template-columns: auto auto;
+  justify-content: start;
+}
+
+@media (max-width: 640px) {
+  .professional-dialog {
+    width: calc(100% - 1.5rem);
+    max-width: none;
+  }
+
+  .professional-dialog__actions {
+    grid-template-columns: 1fr;
+  }
+}
