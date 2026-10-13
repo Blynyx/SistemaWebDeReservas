@@ -6,6 +6,7 @@ import './styles/appointments.css';
 import './styles/clients.css';
 import './styles/services.css';
 import './styles/professionals.css';
+import './styles/professionalConfiguration.css';
 import { setUnauthorizedHandler } from './api/apiClient.js';
 import { login, logout, restoreSession } from './auth/auth.service.js';
 import { getSession } from './auth/session.js';

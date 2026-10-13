@@ -1,0 +1,70 @@
+.config-dialog {
+  width: min(100%, 52rem);
+  max-height: calc(100vh - 2rem);
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  overflow: auto;
+}
+
+.config-dialog__header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: start;
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+}
+
+.config-dialog__header h2 {
+  margin: 0;
+}
+
+.config-section {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.config-section h3 {
+  margin: 0;
+}
+
+.config-section__lead {
+  color: var(--muted);
+}
+
+.config-section__form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.config-section__form--schedule,
+.config-section__form--block {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+}
+
+.config-dialog textarea {
+  width: 100%;
+  min-height: 3.5rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: #fff;
+  resize: vertical;
+}
+
+@media (max-width: 800px) {
+  .config-dialog {
+    width: calc(100% - 1rem);
+  }
+
+  .config-section__form,
+  .config-section__form--schedule,
+  .config-section__form--block {
+    grid-template-columns: 1fr;
+  }
+}

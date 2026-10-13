@@ -6,6 +6,7 @@ import {
   updateProfessional,
 } from '../api/professionals.api.js';
 import { getSafeErrorMessage } from '../utils/apiMessages.js';
+import { createConfigurationDialog } from './professionalConfiguration.panel.js';
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PROFESSIONAL_NOT_FOUND = 'El profesional ya no está disponible.';
@@ -48,6 +49,7 @@ export function renderProfessionalsView(root) {
 
   const professionalDialog = createProfessionalDialog();
   const accountDialog = createAccountDialog();
+  const configurationDialog = createConfigurationDialog();
 
   page.append(
     heading,
@@ -57,7 +59,8 @@ export function renderProfessionalsView(root) {
     errorBox,
     results,
     professionalDialog.element,
-    accountDialog.element
+    accountDialog.element,
+    configurationDialog.element
   );
   root.append(page);
 
@@ -109,6 +112,9 @@ export function renderProfessionalsView(root) {
         },
         onDeactivate(professional, row) {
           deactivate(professional, row);
+        },
+        onConfigure(professional) {
+          configurationDialog.open(professional);
         },
       });
     } catch (error) {
@@ -273,7 +279,7 @@ function buildPatchPayload(professional, name, email, phone) {
   return { data };
 }
 
-function renderProfessionalTable(container, professionals, { onEdit, onProvision, onDeactivate }) {
+function renderProfessionalTable(container, professionals, { onEdit, onProvision, onDeactivate, onConfigure }) {
   container.replaceChildren();
 
   if (professionals.length === 0) {
@@ -337,6 +343,13 @@ function renderProfessionalTable(container, professionals, { onEdit, onProvision
     }
 
     if (active) {
+      const configureButton = document.createElement('button');
+      configureButton.type = 'button';
+      configureButton.className = 'button button--small';
+      configureButton.textContent = 'Configurar';
+      configureButton.addEventListener('click', () => onConfigure(professional));
+      actionsCell.append(configureButton);
+
       const deactivateButton = document.createElement('button');
       deactivateButton.type = 'button';
       deactivateButton.className = 'button button--small button--danger';
