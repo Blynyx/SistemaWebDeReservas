@@ -1,5 +1,17 @@
 import { apiRequest } from './apiClient.js';
 
+export function createAppointment({ clientId, professionalId, serviceId, startAt }) {
+  return apiRequest('/appointments', {
+    method: 'POST',
+    body: {
+      clientId,
+      professionalId,
+      serviceId,
+      startAt,
+    },
+  });
+}
+
 export function getAppointments(filters = {}) {
   const params = new URLSearchParams();
 

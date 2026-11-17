@@ -3,6 +3,7 @@ import './styles/auth.css';
 import './styles/layout.css';
 import './styles/dashboard.css';
 import './styles/appointments.css';
+import './styles/staffAppointmentBooking.css';
 import './styles/clients.css';
 import './styles/services.css';
 import './styles/professionals.css';

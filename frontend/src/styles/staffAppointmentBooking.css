@@ -1,0 +1,156 @@
+.staff-page__actions {
+  display: flex;
+  margin-bottom: 1rem;
+}
+
+.booking-dialog {
+  width: min(52rem, calc(100% - 2rem));
+  max-height: calc(100vh - 2rem);
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  overflow-y: auto;
+}
+
+.booking-dialog::backdrop {
+  background: rgb(23 32 38 / 55%);
+}
+
+.booking-dialog__form {
+  display: grid;
+  gap: 1rem;
+}
+
+.booking-dialog__fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.booking-dialog__reference-status {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.booking-dialog__reference-status p,
+.booking-dialog__availability p {
+  margin: 0;
+}
+
+.booking-dialog__availability:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 0.25rem;
+}
+
+.booking-professional {
+  padding: 1rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.booking-professional h3 {
+  margin: 0 0 0.65rem;
+}
+
+.booking-slots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.booking-slot {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  background: var(--surface);
+  color: inherit;
+  cursor: pointer;
+}
+
+.booking-slot input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.booking-slot:hover {
+  border-color: var(--brand);
+}
+
+.booking-slot:has(:focus-visible) {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.booking-slot--selected,
+.booking-slot:has(:checked) {
+  border-color: var(--brand);
+  background: var(--brand);
+  color: #fff;
+}
+
+.booking-dialog__summary {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--surface);
+}
+
+.booking-dialog__summary:empty {
+  display: none;
+}
+
+.booking-dialog__summary h3 {
+  margin: 0 0 0.75rem;
+}
+
+.booking-dialog__summary dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem 1rem;
+  margin: 0;
+}
+
+.booking-dialog__summary dl div {
+  min-width: 0;
+}
+
+.booking-dialog__summary dt {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.booking-dialog__summary dd {
+  margin: 0.15rem 0 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
+.booking-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+@media (max-width: 700px) {
+  .booking-dialog {
+    width: calc(100% - 1rem);
+    max-height: calc(100vh - 1rem);
+    padding: 1rem;
+  }
+
+  .booking-dialog__fields,
+  .booking-dialog__summary dl {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-slot {
+    flex: 1 1 8.5rem;
+  }
+}

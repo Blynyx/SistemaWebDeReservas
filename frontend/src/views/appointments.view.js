@@ -17,6 +17,7 @@ import {
 import { getSafeErrorMessage } from '../utils/apiMessages.js';
 import { formatLocalDate, formatLocalTime, isDateTimeLocal } from '../utils/dateTime.js';
 import { createNameLookup, sortByName } from '../utils/references.js';
+import { createStaffAppointmentBookingDialog } from './staffAppointmentBooking.dialog.js';
 
 const ACTION_LABELS = {
   confirm: 'Confirmar',
@@ -45,6 +46,8 @@ export function renderAppointmentsView(root) {
     serviceName: () => 'Servicio no disponible',
   };
   let currentFilters = {};
+  let clients = [];
+  let services = [];
 
   const page = document.createElement('section');
   page.className = 'staff-page';
@@ -55,6 +58,16 @@ export function renderAppointmentsView(root) {
   const lead = document.createElement('p');
   lead.className = 'staff-page__lead';
   lead.textContent = 'Consulta y gestiona las citas de la organización.';
+
+  const pageActions = document.createElement('div');
+  pageActions.className = 'staff-page__actions';
+
+  const newAppointmentButton = document.createElement('button');
+  newAppointmentButton.type = 'button';
+  newAppointmentButton.className = 'button button--primary';
+  newAppointmentButton.textContent = 'Nueva cita';
+  newAppointmentButton.disabled = true;
+  pageActions.append(newAppointmentButton);
 
   const form = createFilterForm();
   const feedback = document.createElement('p');
@@ -69,9 +82,29 @@ export function renderAppointmentsView(root) {
   results.className = 'appointments-results';
 
   const dialog = createRescheduleDialog();
+  const bookingDialog = createStaffAppointmentBookingDialog({
+    async onCreated() {
+      setFeedback('Cita creada correctamente.');
+      await loadAppointments(currentFilters, { keepFeedback: true });
+    },
+  });
 
-  page.append(heading, lead, form.element, feedback, errorBox, results, dialog.element);
+  page.append(
+    heading,
+    lead,
+    pageActions,
+    form.element,
+    feedback,
+    errorBox,
+    results,
+    dialog.element,
+    bookingDialog.element
+  );
   root.append(page);
+
+  newAppointmentButton.addEventListener('click', () => {
+    bookingDialog.open({ clients, services });
+  });
 
   function setFeedback(message) {
     feedback.textContent = message;
@@ -274,12 +307,15 @@ export function renderAppointmentsView(root) {
         ),
         serviceName: createNameLookup(servicesResult.services, 'Servicio no disponible'),
       };
+      clients = clientsResult.clients;
+      services = servicesResult.services;
 
       fillSelect(form.client, sortByName(clientsResult.clients), 'Todos los clientes');
       fillSelect(form.professional, sortByName(professionalsResult.professionals), 'Todos los profesionales');
       fillSelect(form.service, sortByName(servicesResult.services), 'Todos los servicios');
 
       currentFilters = {};
+      newAppointmentButton.disabled = false;
       renderAppointmentTable(results, appointmentsResult.appointments, names, {
         onAction: handleAction,
       });
