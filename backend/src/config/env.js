@@ -13,6 +13,8 @@ export const PORT = Number(process.env.PORT) || 3000;
 export const DB_PATH = process.env.DB_PATH || './data/reservas.db';
 export const JWT_SECRET = process.env.JWT_SECRET;
 export const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '2h';
+export const MONGODB_URI = process.env.MONGODB_URI || '';
+export const MONGODB_DB_NAME = process.env.MONGODB_DB_NAME || 'reservas';
 export { backendRoot };
 
 if (!JWT_SECRET) {
