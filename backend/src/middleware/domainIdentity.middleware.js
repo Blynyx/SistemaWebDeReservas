@@ -2,7 +2,7 @@ import { httpError } from '../utils/httpError.js';
 import { findByUserAccountId as findProfessionalByUserAccountId } from '../modules/professionals/professional.repository.js';
 import { findByUserAccountId as findClientByUserAccountId } from '../modules/clients/client.repository.js';
 
-export function requireProfessionalIdentity(req, res, next) {
+export async function requireProfessionalIdentity(req, res, next) {
   if (!req.user) {
     next(httpError(401, 'No autenticado'));
     return;
@@ -13,23 +13,27 @@ export function requireProfessionalIdentity(req, res, next) {
     return;
   }
 
-  const professional = findProfessionalByUserAccountId(req.user.organizationId, req.user.id);
+  try {
+    const professional = await findProfessionalByUserAccountId(req.user.organizationId, req.user.id);
 
-  if (!professional || professional.is_active !== 1) {
-    next(httpError(403, 'No tienes un profesional vinculado'));
-    return;
+    if (!professional || professional.is_active !== 1) {
+      next(httpError(403, 'No tienes un profesional vinculado'));
+      return;
+    }
+
+    req.domain = {
+      type: 'PROFESSIONAL',
+      id: professional.id,
+      professional,
+    };
+
+    next();
+  } catch (error) {
+    next(error);
   }
-
-  req.domain = {
-    type: 'PROFESSIONAL',
-    id: professional.id,
-    professional,
-  };
-
-  next();
 }
 
-export function requireClientIdentity(req, res, next) {
+export async function requireClientIdentity(req, res, next) {
   if (!req.user) {
     next(httpError(401, 'No autenticado'));
     return;
@@ -40,18 +44,22 @@ export function requireClientIdentity(req, res, next) {
     return;
   }
 
-  const client = findClientByUserAccountId(req.user.organizationId, req.user.id);
+  try {
+    const client = await findClientByUserAccountId(req.user.organizationId, req.user.id);
 
-  if (!client || client.is_active !== 1) {
-    next(httpError(403, 'No tienes un cliente vinculado'));
-    return;
+    if (!client || client.is_active !== 1) {
+      next(httpError(403, 'No tienes un cliente vinculado'));
+      return;
+    }
+
+    req.domain = {
+      type: 'CLIENT',
+      id: client.id,
+      client,
+    };
+
+    next();
+  } catch (error) {
+    next(error);
   }
-
-  req.domain = {
-    type: 'CLIENT',
-    id: client.id,
-    client,
-  };
-
-  next();
 }

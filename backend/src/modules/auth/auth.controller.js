@@ -9,9 +9,9 @@ export async function loginController(req, res, next) {
   }
 }
 
-export function meController(req, res, next) {
+export async function meController(req, res, next) {
   try {
-    const result = getCurrentSession(req.user);
+    const result = await getCurrentSession(req.user);
     res.status(200).json(result);
   } catch (error) {
     next(error);

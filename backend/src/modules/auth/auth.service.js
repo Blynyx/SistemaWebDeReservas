@@ -38,9 +38,9 @@ function validateLoginInput(body) {
 export async function login(body) {
   const { organizationSlug, email, password } = validateLoginInput(body);
 
-  const organization = findBySlug(organizationSlug);
+  const organization = await findBySlug(organizationSlug);
   const user = organization
-    ? findByOrganizationIdAndEmail(organization.id, email)
+    ? await findByOrganizationIdAndEmail(organization.id, email)
     : null;
   const passwordOk = user ? await verifyPassword(password, user.password_hash) : false;
 
@@ -69,18 +69,18 @@ export async function login(body) {
   };
 }
 
-export function resolveActiveIdentity(tokenUser) {
+export async function resolveActiveIdentity(tokenUser) {
   if (!tokenUser?.id || !tokenUser?.organizationId) {
     throw httpError(401, 'No autenticado');
   }
 
-  const user = findByIdAndOrganization(tokenUser.id, tokenUser.organizationId);
+  const user = await findByIdAndOrganization(tokenUser.id, tokenUser.organizationId);
 
   if (!user || user.is_active !== 1) {
     throw httpError(401, 'No autenticado');
   }
 
-  const organization = findOrganizationById(tokenUser.organizationId);
+  const organization = await findOrganizationById(tokenUser.organizationId);
 
   if (!organization || organization.is_active !== 1) {
     throw httpError(401, 'No autenticado');
@@ -95,8 +95,8 @@ export function resolveActiveIdentity(tokenUser) {
   };
 }
 
-export function getCurrentSession(authUser) {
-  const { user, organization } = resolveActiveIdentity(authUser);
+export async function getCurrentSession(authUser) {
+  const { user, organization } = await resolveActiveIdentity(authUser);
 
   return {
     user: {

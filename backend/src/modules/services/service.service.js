@@ -19,8 +19,8 @@ function toServiceResponse(row) {
   };
 }
 
-function requireTenantService(organizationId, serviceId) {
-  const service = findById(organizationId, serviceId);
+async function requireTenantService(organizationId, serviceId) {
+  const service = await findById(organizationId, serviceId);
 
   if (!service) {
     throw httpError(404, 'Servicio no encontrado');
@@ -82,28 +82,29 @@ function validateServiceFields(body, { partial }) {
   return fields;
 }
 
-export function createService(organizationId, body) {
+export async function createService(organizationId, body) {
   const fields = validateServiceFields(body ?? {}, { partial: false });
   const id = randomUUID();
 
-  insertService({
+  await insertService({
     id,
     organizationId,
     ...fields,
   });
 
-  return toServiceResponse(findById(organizationId, id));
+  return toServiceResponse(await findById(organizationId, id));
 }
 
-export function listServices(organizationId) {
-  return findAllByOrganization(organizationId).map(toServiceResponse);
+export async function listServices(organizationId) {
+  const services = await findAllByOrganization(organizationId);
+  return services.map(toServiceResponse);
 }
 
-export function getService(organizationId, serviceId) {
-  return toServiceResponse(requireTenantService(organizationId, serviceId));
+export async function getService(organizationId, serviceId) {
+  return toServiceResponse(await requireTenantService(organizationId, serviceId));
 }
 
-export function patchService(organizationId, serviceId, body) {
+export async function patchService(organizationId, serviceId, body) {
   const payload = body ?? {};
   const hasUpdatableField = ['name', 'description', 'durationMinutes', 'priceMinorUnits'].some(
     (field) => payload[field] !== undefined
@@ -113,21 +114,21 @@ export function patchService(organizationId, serviceId, body) {
     throw httpError(400, 'Debe enviar al menos un campo modificable');
   }
 
-  requireTenantService(organizationId, serviceId);
+  await requireTenantService(organizationId, serviceId);
 
   const fields = validateServiceFields(payload, { partial: true });
-  updateService(organizationId, serviceId, {
+  await updateService(organizationId, serviceId, {
     ...fields,
     updatedAt: new Date().toISOString(),
   });
 
-  return toServiceResponse(findById(organizationId, serviceId));
+  return toServiceResponse(await findById(organizationId, serviceId));
 }
 
-export function removeService(organizationId, serviceId) {
-  const service = requireTenantService(organizationId, serviceId);
+export async function removeService(organizationId, serviceId) {
+  const service = await requireTenantService(organizationId, serviceId);
 
   if (service.is_active === 1) {
-    deactivateService(organizationId, serviceId, new Date().toISOString());
+    await deactivateService(organizationId, serviceId, new Date().toISOString());
   }
 }

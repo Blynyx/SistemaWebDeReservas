@@ -100,12 +100,12 @@ function validateProfessionalFields(body, { partial }) {
   return fields;
 }
 
-export function createProfessional(organizationId, body) {
+export async function createProfessional(organizationId, body) {
   const payload = body ?? {};
   const fields = validateProfessionalFields(payload, { partial: false });
   const id = randomUUID();
 
-  insertProfessional({
+  await insertProfessional({
     id,
     organizationId,
     name: fields.name,
@@ -113,18 +113,19 @@ export function createProfessional(organizationId, body) {
     phone: fields.phone,
   });
 
-  return toProfessionalResponse(findById(organizationId, id));
+  return toProfessionalResponse(await findById(organizationId, id));
 }
 
-export function listProfessionals(organizationId) {
-  return findAllByOrganization(organizationId).map(toProfessionalResponse);
+export async function listProfessionals(organizationId) {
+  const professionals = await findAllByOrganization(organizationId);
+  return professionals.map(toProfessionalResponse);
 }
 
-export function getProfessional(organizationId, professionalId) {
+export async function getProfessional(organizationId, professionalId) {
   return toProfessionalResponse(requireTenantProfessional(organizationId, professionalId));
 }
 
-export function patchProfessional(organizationId, professionalId, body) {
+export async function patchProfessional(organizationId, professionalId, body) {
   const payload = body ?? {};
   const hasUpdatableField = ['name', 'email', 'phone'].some((field) => payload[field] !== undefined);
 
@@ -135,15 +136,15 @@ export function patchProfessional(organizationId, professionalId, body) {
   requireTenantProfessional(organizationId, professionalId);
 
   const fields = validateProfessionalFields(payload, { partial: true });
-  updateProfessional(organizationId, professionalId, {
+  await updateProfessional(organizationId, professionalId, {
     ...fields,
     updatedAt: new Date().toISOString(),
   });
 
-  return toProfessionalResponse(findById(organizationId, professionalId));
+  return toProfessionalResponse(await findById(organizationId, professionalId));
 }
 
-export function removeProfessional(organizationId, professionalId) {
+export async function removeProfessional(organizationId, professionalId) {
   runInImmediateTransaction(() => {
     const professional = requireTenantProfessional(organizationId, professionalId);
 

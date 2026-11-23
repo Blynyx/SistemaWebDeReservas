@@ -2,7 +2,7 @@ import { resolveActiveIdentity } from '../modules/auth/auth.service.js';
 import { httpError } from '../utils/httpError.js';
 import { verifyAuthToken } from '../utils/jwt.js';
 
-export function authMiddleware(req, res, next) {
+export async function authMiddleware(req, res, next) {
   const header = req.headers.authorization;
 
   if (typeof header !== 'string' || !header.startsWith('Bearer ')) {
@@ -19,7 +19,7 @@ export function authMiddleware(req, res, next) {
 
   try {
     const payload = verifyAuthToken(token);
-    const identity = resolveActiveIdentity({
+    const identity = await resolveActiveIdentity({
       id: payload.sub,
       organizationId: payload.organizationId,
     });

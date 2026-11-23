@@ -119,12 +119,12 @@ function validateClientFields(body, { partial }) {
   return fields;
 }
 
-export function createClient(organizationId, body) {
+export async function createClient(organizationId, body) {
   const payload = body ?? {};
   const fields = validateClientFields(payload, { partial: false });
   const id = randomUUID();
 
-  insertClient({
+  await insertClient({
     id,
     organizationId,
     name: fields.name,
@@ -132,18 +132,19 @@ export function createClient(organizationId, body) {
     phone: fields.phone,
   });
 
-  return toClientResponse(findById(organizationId, id));
+  return toClientResponse(await findById(organizationId, id));
 }
 
-export function listClients(organizationId) {
-  return findAllByOrganization(organizationId).map(toClientResponse);
+export async function listClients(organizationId) {
+  const clients = await findAllByOrganization(organizationId);
+  return clients.map(toClientResponse);
 }
 
-export function getClient(organizationId, clientId) {
+export async function getClient(organizationId, clientId) {
   return toClientResponse(requireTenantClient(organizationId, clientId));
 }
 
-export function patchClient(organizationId, clientId, body) {
+export async function patchClient(organizationId, clientId, body) {
   const payload = body ?? {};
   const hasUpdatableField = ['name', 'email', 'phone'].some((field) => payload[field] !== undefined);
 
@@ -154,15 +155,15 @@ export function patchClient(organizationId, clientId, body) {
   requireTenantClient(organizationId, clientId);
 
   const fields = validateClientFields(payload, { partial: true });
-  updateClient(organizationId, clientId, {
+  await updateClient(organizationId, clientId, {
     ...fields,
     updatedAt: new Date().toISOString(),
   });
 
-  return toClientResponse(findById(organizationId, clientId));
+  return toClientResponse(await findById(organizationId, clientId));
 }
 
-export function removeClient(organizationId, clientId) {
+export async function removeClient(organizationId, clientId) {
   runInImmediateTransaction(() => {
     const client = requireTenantClient(organizationId, clientId);
 
