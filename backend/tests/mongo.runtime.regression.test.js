@@ -1,11 +1,6 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
 
-const unusedDbPath = path.join(os.tmpdir(), `unused-sqlite-26e-${Date.now()}.db`);
-process.env.DB_PATH = unusedDbPath;
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'mongo-runtime-26e-secret';
 
 const TEST_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/?replicaSet=rs0';
@@ -38,7 +33,6 @@ describe('MongoDB Runtime API Regression (Etapa 26E)', () => {
     }
     await getMongoDb().dropDatabase().catch(() => {});
     await closeMongo();
-    assert.equal(fs.existsSync(unusedDbPath), false, 'No debe crearse archivo SQLite en runtime Mongo');
   });
 
   it('ejecuta flujo E2E completo sobre MongoDB y valida aislamiento multi-tenant', async () => {

@@ -15,14 +15,6 @@ export function errorHandler(err, req, res, next) {
 
   console.error(err);
 
-  if (typeof err.code === 'string' && err.code.startsWith('SQLITE_CONSTRAINT')) {
-    res.status(409).json({
-      status: 'error',
-      message: 'Ya existe un registro con esos datos',
-    });
-    return;
-  }
-
   res.status(500).json({
     status: 'error',
     message: 'Error interno del servidor',

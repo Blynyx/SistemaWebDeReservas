@@ -1,8 +1,12 @@
 # Entorno Local MongoDB 8.0 (Replica Set `rs0`)
 
-> Las transacciones multi-documento de MongoDB requieren un **Replica Set**. Una instancia standalone **no** es válida para este proyecto.
+MongoDB 8.0 es la base de datos productiva actual del sistema **Sistema Web de Reservas de Citas**.
 
-## 1. Iniciar MongoDB 8.0 (Windows PowerShell)
+> **Obligatorio:** El sistema requiere un **Replica Set (`rs0`)** incluso en desarrollo local para ejecutar transacciones multi-documento (`withTransaction` / `withDayLockTransaction`). Una instancia standalone **no** es válida.
+
+## Flujo recomendado de arranque (Windows PowerShell)
+
+### 1. Iniciar MongoDB 8.0 con Docker
 
 Desde la raíz del repositorio:
 
@@ -10,13 +14,13 @@ Desde la raíz del repositorio:
 docker compose -f docker-compose.mongo.yml up -d
 ```
 
-Verificar que el contenedor esté saludable:
+Verificar estado del contenedor:
 
 ```powershell
 docker compose -f docker-compose.mongo.yml ps
 ```
 
-## 2. Inicializar el Replica Set `rs0`
+### 2. Inicializar el Replica Set `rs0` (primera vez)
 
 Desde `backend/`:
 
@@ -24,43 +28,65 @@ Desde `backend/`:
 npm run mongo:rs:init
 ```
 
-O manualmente con `mongosh` dentro del contenedor:
+### 3. Configurar `.env`
 
-```powershell
-docker exec -it reservas-mongodb-rs0 mongosh --eval "rs.initiate({ _id: 'rs0', members: [{ _id: 0, host: '127.0.0.1:27017' }] })"
-```
-
-## 3. Comprobar que el Replica Set está configurado
-
-```powershell
-docker exec -it reservas-mongodb-rs0 mongosh --eval "rs.status().set; rs.isMaster().ismaster"
-```
-
-## 4. Conectarse y crear índices desde Node.js
-
-Configurar `MONGODB_URI` y `MONGODB_DB_NAME` en `backend/.env` (ver `backend/.env.example`):
+Copiar `backend/.env.example` a `backend/.env` y ajustar los secretos locales:
 
 ```env
+PORT=3000
+JWT_SECRET=change-me
+JWT_EXPIRES_IN=2h
 MONGODB_URI=mongodb://127.0.0.1:27017/?replicaSet=rs0
 MONGODB_DB_NAME=reservas
 ```
 
-Luego, desde `backend/`:
+### 4. Verificar conexión y Replica Set
+
+Desde `backend/`:
 
 ```powershell
 npm run mongo:check
+```
+
+### 5. Asegurar índices
+
+```powershell
 npm run mongo:indexes
 ```
 
-## 5. Detener el entorno
+*(Nota: `npm start` también ejecuta `ensureIndexes()` automáticamente al iniciar).*
 
-Detener manteniendo los datos persistidos en el volumen Docker:
+### 6. Cargar datos demo (opcional, idempotente)
+
+```powershell
+npm run mongo:seed
+```
+
+Crea la organización `demo-reservas` (`admin@demo.local`, `profesional@demo.local`, `cliente@demo.local`) sin eliminar ni duplicar datos existentes.
+
+### 7. Iniciar el backend
+
+```powershell
+npm start
+```
+
+### 8. Comprobar Health
+
+```powershell
+Invoke-WebRequest -Uri http://localhost:3000/api/health -UseBasicParsing
+```
+
+Esperado: `200 OK` con `{"status":"ok"}`.
+
+## Detener el entorno
+
+Manteniendo los datos persistidos en el volumen Docker:
 
 ```powershell
 docker compose -f docker-compose.mongo.yml down
 ```
 
-Detener y eliminar también el volumen de datos locales:
+Eliminando también el volumen de datos locales:
 
 ```powershell
 docker compose -f docker-compose.mongo.yml down -v

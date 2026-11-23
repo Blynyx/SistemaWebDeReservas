@@ -1,8 +1,19 @@
 # Especificación Técnica: Migración SQLite → MongoDB (Etapa 26A)
 
-**Proyecto:** Sistema Web de Reservas de Citas  
-Estado: Especificación técnica revisada — pendiente de aprobación final  
-**Metodología:** Ágil + Spec-Driven Development (SDD) + BDD  
+**Proyecto:** Sistema Web de Reservas de Citas
+
+Estado: COMPLETADA (Migración SQLite → MongoDB cerrada en Etapa 26F)
+
+**Metodología:** Ágil + Spec-Driven Development (SDD) + BDD
+
+> **Nota de cierre de migración:**
+> - **Etapa 26B completada:** Infraestructura MongoDB (`mongodb` driver, `MongoClient`, `ensureIndexes`, `withTransaction`, entorno Replica Set `rs0`).
+> - **Etapa 26C completada:** Preparación `async/await` y repositorios base MongoDB como adaptadores de compatibilidad.
+> - **Etapa 26D completada:** Repositorios de agenda, citas, notificaciones, dashboard, `professionalDayLocks` y pruebas de concurrencia.
+> - **Etapa 26E completada:** Cutover atómico del runtime productivo a MongoDB.
+> - **Etapa 26F completada:** Retirada definitiva de SQLite (`better-sqlite3`, `connection.js`, `transaction.js`, `migrate.js`, `migrations/`), seed demo reproducible y consolidación final.
+>
+> **Trazabilidad histórica:** La consigna inicial del proyecto utilizó SQLite (`better-sqlite3`) y posteriormente, por nueva indicación del docente, se migró a MongoDB. Las secciones de este documento que describen SQLite representan la **arquitectura previa / baseline histórico** y **no** la arquitectura actual del runtime.
 
 ---
 
