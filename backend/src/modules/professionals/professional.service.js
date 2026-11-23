@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { runInImmediateTransaction } from '../../database/transaction.js';
+import { isDuplicateKeyError } from '../../database/mongodb/errors.js';
+import { withTransaction } from '../../database/mongodb/transaction.js';
 import { httpError } from '../../utils/httpError.js';
 import { parseLoginEmail, parseLoginPassword } from '../../utils/credentials.js';
 import { hashPassword } from '../../utils/password.js';
@@ -30,8 +31,8 @@ function toProfessionalResponse(row) {
   };
 }
 
-function requireTenantProfessional(organizationId, professionalId) {
-  const professional = findById(organizationId, professionalId);
+async function requireTenantProfessional(organizationId, professionalId, { session } = {}) {
+  const professional = await findById(organizationId, professionalId, { session });
 
   if (!professional) {
     throw httpError(404, 'Profesional no encontrado');
@@ -122,7 +123,7 @@ export async function listProfessionals(organizationId) {
 }
 
 export async function getProfessional(organizationId, professionalId) {
-  return toProfessionalResponse(requireTenantProfessional(organizationId, professionalId));
+  return toProfessionalResponse(await requireTenantProfessional(organizationId, professionalId));
 }
 
 export async function patchProfessional(organizationId, professionalId, body) {
@@ -133,7 +134,7 @@ export async function patchProfessional(organizationId, professionalId, body) {
     throw httpError(400, 'Debe enviar al menos un campo modificable');
   }
 
-  requireTenantProfessional(organizationId, professionalId);
+  await requireTenantProfessional(organizationId, professionalId);
 
   const fields = validateProfessionalFields(payload, { partial: true });
   await updateProfessional(organizationId, professionalId, {
@@ -145,17 +146,21 @@ export async function patchProfessional(organizationId, professionalId, body) {
 }
 
 export async function removeProfessional(organizationId, professionalId) {
-  runInImmediateTransaction(() => {
-    const professional = requireTenantProfessional(organizationId, professionalId);
+  await withTransaction(async (session) => {
+    const professional = await requireTenantProfessional(organizationId, professionalId, {
+      session,
+    });
 
     if (professional.is_active !== 1) {
       return;
     }
 
-    deactivateProfessional(organizationId, professionalId, new Date().toISOString());
+    await deactivateProfessional(organizationId, professionalId, new Date().toISOString(), {
+      session,
+    });
 
     if (professional.user_account_id) {
-      deactivateUserAccount(organizationId, professional.user_account_id);
+      await deactivateUserAccount(organizationId, professional.user_account_id, { session });
     }
   });
 }
@@ -164,43 +169,60 @@ export async function provisionProfessionalAccount(organizationId, professionalI
   const email = parseLoginEmail(body?.email);
   const password = parseLoginPassword(body?.password);
   const passwordHash = await hashPassword(password);
+  const userAccountId = randomUUID();
 
-  return runInImmediateTransaction(() => {
-    const professional = requireTenantProfessional(organizationId, professionalId);
+  try {
+    return await withTransaction(async (session) => {
+      const professional = await requireTenantProfessional(organizationId, professionalId, {
+        session,
+      });
 
-    if (professional.is_active !== 1) {
-      throw httpError(409, 'El profesional no está activo');
-    }
+      if (professional.is_active !== 1) {
+        throw httpError(409, 'El profesional no está activo');
+      }
 
-    if (professional.user_account_id) {
-      throw httpError(409, 'El profesional ya tiene una cuenta');
-    }
+      if (professional.user_account_id) {
+        throw httpError(409, 'El profesional ya tiene una cuenta');
+      }
 
-    if (findByOrganizationIdAndEmail(organizationId, email)) {
+      if (await findByOrganizationIdAndEmail(organizationId, email, { session })) {
+        throw httpError(409, 'Ya existe una cuenta con ese correo');
+      }
+
+      await insertUserAccount(
+        {
+          id: userAccountId,
+          organizationId,
+          email,
+          passwordHash,
+          role: 'PROFESSIONAL',
+          isActive: 1,
+        },
+        { session }
+      );
+
+      await linkUserAccount(
+        organizationId,
+        professional.id,
+        userAccountId,
+        new Date().toISOString(),
+        { session }
+      );
+
+      return {
+        professionalId: professional.id,
+        userAccount: {
+          id: userAccountId,
+          email,
+          role: 'PROFESSIONAL',
+          isActive: 1,
+        },
+      };
+    });
+  } catch (error) {
+    if (isDuplicateKeyError(error)) {
       throw httpError(409, 'Ya existe una cuenta con ese correo');
     }
-
-    const userAccountId = randomUUID();
-
-    insertUserAccount({
-      id: userAccountId,
-      organizationId,
-      email,
-      passwordHash,
-      role: 'PROFESSIONAL',
-      isActive: 1,
-    });
-
-    linkUserAccount(organizationId, professional.id, userAccountId, new Date().toISOString());
-
-    return {
-      professionalId: professional.id,
-      userAccount: {
-        id: userAccountId,
-        email,
-        role: 'PROFESSIONAL',
-        isActive: 1,
-      },
-    };
-  });
+    throw error;
+  }
 }

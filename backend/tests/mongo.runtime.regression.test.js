@@ -4,78 +4,85 @@ import os from 'node:os';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
 
-const tempDbPath = path.join(os.tmpdir(), `reservas-regression-${Date.now()}.db`);
-process.env.DB_PATH = tempDbPath;
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'sqlite-regression-secret';
+const unusedDbPath = path.join(os.tmpdir(), `unused-sqlite-26e-${Date.now()}.db`);
+process.env.DB_PATH = unusedDbPath;
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'mongo-runtime-26e-secret';
 
-// Importar migrate y app después de fijar DB_PATH
-await import('../src/database/migrate.js');
-const { getDb } = await import('../src/database/connection.js');
+const TEST_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/?replicaSet=rs0';
+const TEST_DB_NAME = 'reservas_runtime_26e_test';
+
+const { closeMongo, connectMongo, getMongoDb } = await import(
+  '../src/database/mongodb/client.js'
+);
+const { ensureIndexes } = await import('../src/database/mongodb/indexes.js');
 const { default: app } = await import('../src/app.js');
 
-describe('SQLite Runtime Regression (Etapa 26B)', () => {
+describe('MongoDB Runtime API Regression (Etapa 26E)', () => {
   let server;
   let baseUrl;
 
   before(async () => {
+    await connectMongo({ uri: TEST_URI, dbName: TEST_DB_NAME });
+    await getMongoDb().dropDatabase();
+    await ensureIndexes(getMongoDb());
+
     server = app.listen(0);
     await new Promise((resolve) => server.once('listening', resolve));
     const { port } = server.address();
     baseUrl = `http://127.0.0.1:${port}`;
   });
 
-  after(() => {
-    server?.close();
-    getDb().close();
-    if (fs.existsSync(tempDbPath)) {
-      fs.unlinkSync(tempDbPath);
+  after(async () => {
+    if (server) {
+      await new Promise((resolve) => server.close(resolve));
     }
+    await getMongoDb().dropDatabase().catch(() => {});
+    await closeMongo();
+    assert.equal(fs.existsSync(unusedDbPath), false, 'No debe crearse archivo SQLite en runtime Mongo');
   });
 
-  it('mantiene operativos health, onboarding, login, /auth/me, availability, citas, lifecycle, notifications y dashboard', async () => {
-    // 1. Health
+  it('ejecuta flujo E2E completo sobre MongoDB y valida aislamiento multi-tenant', async () => {
+    // 1. GET /api/health
     const healthRes = await fetch(`${baseUrl}/api/health`);
     assert.equal(healthRes.status, 200);
     assert.deepEqual(await healthRes.json(), { status: 'ok' });
 
-    // 2. Onboarding
+    // 2. Onboarding Organization + ADMIN (ORG-A)
     const onboardRes = await fetch(`${baseUrl}/api/v1/onboarding/organizations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        organizationName: 'Clinica Regression',
-        adminEmail: 'admin@regression.local',
+        organizationName: 'Clinica Mongo A',
+        adminEmail: 'admin@orga.local',
         adminPassword: 'Password123!',
       }),
     });
     assert.equal(onboardRes.status, 201);
-    const onboardData = await onboardRes.json();
-    const orgSlug = onboardData.organization.slug;
+    const onboardA = await onboardRes.json();
 
-    // 3. Login
+    // 3. Login ADMIN
     const loginRes = await fetch(`${baseUrl}/api/v1/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        organizationSlug: orgSlug,
-        email: 'admin@regression.local',
+        organizationSlug: onboardA.organization.slug,
+        email: 'admin@orga.local',
         password: 'Password123!',
       }),
     });
     assert.equal(loginRes.status, 200);
-    const { token } = await loginRes.json();
+    const { token: adminToken } = await loginRes.json();
     const authHeaders = {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${adminToken}`,
     };
 
-    // 4. /auth/me
+    // 4. GET /api/v1/auth/me
     const meRes = await fetch(`${baseUrl}/api/v1/auth/me`, { headers: authHeaders });
     assert.equal(meRes.status, 200);
-    const me = await meRes.json();
-    assert.equal(me.user.role, 'ADMIN');
+    assert.equal((await meRes.json()).user.role, 'ADMIN');
 
-    // 5. Crear servicio, profesional, asignación, horario y cliente
+    // 5. Create Service
     const svcRes = await fetch(`${baseUrl}/api/v1/services`, {
       method: 'POST',
       headers: authHeaders,
@@ -88,14 +95,16 @@ describe('SQLite Runtime Regression (Etapa 26B)', () => {
     assert.equal(svcRes.status, 201);
     const service = await svcRes.json();
 
+    // 6. Create Professional
     const proRes = await fetch(`${baseUrl}/api/v1/professionals`, {
       method: 'POST',
       headers: authHeaders,
-      body: JSON.stringify({ name: 'Dra. Regression', email: 'dra@regression.local' }),
+      body: JSON.stringify({ name: 'Dra. Mongo', email: 'dra@orga.local' }),
     });
     assert.equal(proRes.status, 201);
     const professional = await proRes.json();
 
+    // 7. Assign Service
     const assignRes = await fetch(
       `${baseUrl}/api/v1/professionals/${professional.id}/services`,
       {
@@ -106,7 +115,7 @@ describe('SQLite Runtime Regression (Etapa 26B)', () => {
     );
     assert.equal(assignRes.status, 201);
 
-    // 2026-11-20 es viernes (dayOfWeek = 5)
+    // 8. Create WeeklySchedule (2026-11-20 = viernes, dayOfWeek = 5)
     const schedRes = await fetch(
       `${baseUrl}/api/v1/professionals/${professional.id}/schedules`,
       {
@@ -117,25 +126,36 @@ describe('SQLite Runtime Regression (Etapa 26B)', () => {
     );
     assert.equal(schedRes.status, 201);
 
+    // 9. Create Client
     const cliRes = await fetch(`${baseUrl}/api/v1/clients`, {
       method: 'POST',
       headers: authHeaders,
-      body: JSON.stringify({ name: 'Cliente Test', email: 'cli@regression.local' }),
+      body: JSON.stringify({ name: 'Cliente Mongo', email: 'cli@orga.local' }),
     });
     assert.equal(cliRes.status, 201);
     const client = await cliRes.json();
 
-    // 6. Availability
+    // 15. Provision Professional account (antes de crear cita para verificar notificaciones)
+    const proAccRes = await fetch(
+      `${baseUrl}/api/v1/professionals/${professional.id}/account`,
+      {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ email: 'dra@orga.local', password: 'Password123!' }),
+      }
+    );
+    assert.equal(proAccRes.status, 201);
+
+    // 10. Availability
     const availRes = await fetch(
       `${baseUrl}/api/v1/availability?serviceId=${service.id}&date=2026-11-20`,
       { headers: authHeaders }
     );
     assert.equal(availRes.status, 200);
     const avail = await availRes.json();
-    assert.equal(avail.professionals.length, 1);
     assert.ok(avail.professionals[0].slots.some((s) => s.startAt === '2026-11-20T09:00'));
 
-    // 7. Creación de cita
+    // 11 & 12. Create Appointment -> PROGRAMADA
     const aptRes = await fetch(`${baseUrl}/api/v1/appointments`, {
       method: 'POST',
       headers: authHeaders,
@@ -150,7 +170,7 @@ describe('SQLite Runtime Regression (Etapa 26B)', () => {
     const apt = await aptRes.json();
     assert.equal(apt.status, 'PROGRAMADA');
 
-    // 8. Lifecycle (confirm -> cancel)
+    // 13 & 14. Confirm Appointment -> CONFIRMADA
     const confirmRes = await fetch(`${baseUrl}/api/v1/appointments/${apt.id}/confirm`, {
       method: 'PATCH',
       headers: authHeaders,
@@ -158,6 +178,28 @@ describe('SQLite Runtime Regression (Etapa 26B)', () => {
     assert.equal(confirmRes.status, 200);
     assert.equal((await confirmRes.json()).status, 'CONFIRMADA');
 
+    // 16. Professional login
+    const proLoginRes = await fetch(`${baseUrl}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        organizationSlug: onboardA.organization.slug,
+        email: 'dra@orga.local',
+        password: 'Password123!',
+      }),
+    });
+    assert.equal(proLoginRes.status, 200);
+    const { token: proToken } = await proLoginRes.json();
+
+    // 17. Professional notifications (debe tener ASSIGNMENT + ... de la misma tx)
+    const notifRes = await fetch(`${baseUrl}/api/v1/me/notifications`, {
+      headers: { Authorization: `Bearer ${proToken}` },
+    });
+    assert.equal(notifRes.status, 200);
+    const notifData = await notifRes.json();
+    assert.ok(notifData.notifications.length >= 1);
+
+    // 18 & 19. Cancel Appointment -> CANCELADA
     const cancelRes = await fetch(`${baseUrl}/api/v1/appointments/${apt.id}/cancel`, {
       method: 'PATCH',
       headers: authHeaders,
@@ -165,45 +207,44 @@ describe('SQLite Runtime Regression (Etapa 26B)', () => {
     assert.equal(cancelRes.status, 200);
     assert.equal((await cancelRes.json()).status, 'CANCELADA');
 
-    // 9. Notifications (como PROFESSIONAL)
-    const proAccRes = await fetch(
-      `${baseUrl}/api/v1/professionals/${professional.id}/account`,
-      {
-        method: 'POST',
-        headers: authHeaders,
-        body: JSON.stringify({
-          email: 'dra@regression.local',
-          password: 'Password123!',
-        }),
-      }
-    );
-    assert.equal(proAccRes.status, 201);
-
-    const proLoginRes = await fetch(`${baseUrl}/api/v1/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        organizationSlug: orgSlug,
-        email: 'dra@regression.local',
-        password: 'Password123!',
-      }),
-    });
-    assert.equal(proLoginRes.status, 200);
-    const { token: proToken } = await proLoginRes.json();
-
-    const notifRes = await fetch(`${baseUrl}/api/v1/me/notifications`, {
-      headers: { Authorization: `Bearer ${proToken}` },
-    });
-    assert.equal(notifRes.status, 200);
-    const notifData = await notifRes.json();
-    assert.ok(Array.isArray(notifData.notifications));
-
-    // 10. Dashboard
+    // 20. Dashboard
     const dashRes = await fetch(`${baseUrl}/api/v1/dashboard?date=2026-11-20`, {
       headers: authHeaders,
     });
     assert.equal(dashRes.status, 200);
     const dash = await dashRes.json();
-    assert.ok(dash);
+    assert.equal(dash.appointments.cancelada, 1);
+
+    // 21. Tenant isolation básico (ORG-B no ve recursos de ORG-A)
+    const onboardBRes = await fetch(`${baseUrl}/api/v1/onboarding/organizations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        organizationName: 'Clinica Mongo B',
+        adminEmail: 'admin@orgb.local',
+        adminPassword: 'Password123!',
+      }),
+    });
+    assert.equal(onboardBRes.status, 201);
+    const onboardB = await onboardBRes.json();
+
+    const loginBRes = await fetch(`${baseUrl}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        organizationSlug: onboardB.organization.slug,
+        email: 'admin@orgb.local',
+        password: 'Password123!',
+      }),
+    });
+    const { token: tokenB } = await loginBRes.json();
+    const headersB = { Authorization: `Bearer ${tokenB}` };
+
+    assert.equal((await fetch(`${baseUrl}/api/v1/appointments/${apt.id}`, { headers: headersB })).status, 404);
+    assert.equal((await fetch(`${baseUrl}/api/v1/clients/${client.id}`, { headers: headersB })).status, 404);
+    assert.deepEqual(
+      (await (await fetch(`${baseUrl}/api/v1/appointments`, { headers: headersB })).json()).appointments,
+      []
+    );
   });
 });

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { runInImmediateTransaction } from '../../database/transaction.js';
+import { isDuplicateKeyError } from '../../database/mongodb/errors.js';
+import { withTransaction } from '../../database/mongodb/transaction.js';
 import { httpError } from '../../utils/httpError.js';
 import { parseLoginEmail, parseLoginPassword } from '../../utils/credentials.js';
 import { hashPassword } from '../../utils/password.js';
@@ -32,8 +33,8 @@ function toClientResponse(row) {
   };
 }
 
-function requireTenantClient(organizationId, clientId) {
-  const client = findById(organizationId, clientId);
+async function requireTenantClient(organizationId, clientId, { session } = {}) {
+  const client = await findById(organizationId, clientId, { session });
 
   if (!client) {
     throw httpError(404, 'Cliente no encontrado');
@@ -141,7 +142,7 @@ export async function listClients(organizationId) {
 }
 
 export async function getClient(organizationId, clientId) {
-  return toClientResponse(requireTenantClient(organizationId, clientId));
+  return toClientResponse(await requireTenantClient(organizationId, clientId));
 }
 
 export async function patchClient(organizationId, clientId, body) {
@@ -152,7 +153,7 @@ export async function patchClient(organizationId, clientId, body) {
     throw httpError(400, 'Debe enviar al menos un campo modificable');
   }
 
-  requireTenantClient(organizationId, clientId);
+  await requireTenantClient(organizationId, clientId);
 
   const fields = validateClientFields(payload, { partial: true });
   await updateClient(organizationId, clientId, {
@@ -164,17 +165,17 @@ export async function patchClient(organizationId, clientId, body) {
 }
 
 export async function removeClient(organizationId, clientId) {
-  runInImmediateTransaction(() => {
-    const client = requireTenantClient(organizationId, clientId);
+  await withTransaction(async (session) => {
+    const client = await requireTenantClient(organizationId, clientId, { session });
 
     if (client.is_active !== 1) {
       return;
     }
 
-    deactivateClient(organizationId, clientId, new Date().toISOString());
+    await deactivateClient(organizationId, clientId, new Date().toISOString(), { session });
 
     if (client.user_account_id) {
-      deactivateUserAccount(organizationId, client.user_account_id);
+      await deactivateUserAccount(organizationId, client.user_account_id, { session });
     }
   });
 }
@@ -183,43 +184,54 @@ export async function provisionClientAccount(organizationId, clientId, body) {
   const email = parseLoginEmail(body?.email);
   const password = parseLoginPassword(body?.password);
   const passwordHash = await hashPassword(password);
+  const userAccountId = randomUUID();
 
-  return runInImmediateTransaction(() => {
-    const client = requireTenantClient(organizationId, clientId);
+  try {
+    return await withTransaction(async (session) => {
+      const client = await requireTenantClient(organizationId, clientId, { session });
 
-    if (client.is_active !== 1) {
-      throw httpError(409, 'El cliente no está activo');
-    }
+      if (client.is_active !== 1) {
+        throw httpError(409, 'El cliente no está activo');
+      }
 
-    if (client.user_account_id) {
-      throw httpError(409, 'El cliente ya tiene una cuenta');
-    }
+      if (client.user_account_id) {
+        throw httpError(409, 'El cliente ya tiene una cuenta');
+      }
 
-    if (findByOrganizationIdAndEmail(organizationId, email)) {
+      if (await findByOrganizationIdAndEmail(organizationId, email, { session })) {
+        throw httpError(409, 'Ya existe una cuenta con ese correo');
+      }
+
+      await insertUserAccount(
+        {
+          id: userAccountId,
+          organizationId,
+          email,
+          passwordHash,
+          role: 'CLIENT',
+          isActive: 1,
+        },
+        { session }
+      );
+
+      await linkUserAccount(organizationId, client.id, userAccountId, new Date().toISOString(), {
+        session,
+      });
+
+      return {
+        clientId: client.id,
+        userAccount: {
+          id: userAccountId,
+          email,
+          role: 'CLIENT',
+          isActive: 1,
+        },
+      };
+    });
+  } catch (error) {
+    if (isDuplicateKeyError(error)) {
       throw httpError(409, 'Ya existe una cuenta con ese correo');
     }
-
-    const userAccountId = randomUUID();
-
-    insertUserAccount({
-      id: userAccountId,
-      organizationId,
-      email,
-      passwordHash,
-      role: 'CLIENT',
-      isActive: 1,
-    });
-
-    linkUserAccount(organizationId, client.id, userAccountId, new Date().toISOString());
-
-    return {
-      clientId: client.id,
-      userAccount: {
-        id: userAccountId,
-        email,
-        role: 'CLIENT',
-        isActive: 1,
-      },
-    };
-  });
+    throw error;
+  }
 }

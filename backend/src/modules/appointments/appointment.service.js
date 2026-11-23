@@ -1,5 +1,12 @@
 import { randomUUID } from 'node:crypto';
-import { runInImmediateTransaction } from '../../database/transaction.js';
+import {
+  withDayLockTransaction,
+  withTransaction,
+} from '../../database/mongodb/transaction.js';
+import {
+  acquireProfessionalDayLock,
+  extractLockDate,
+} from '../../database/mongodb/repositories/professionalDayLock.repository.js';
 import { httpError } from '../../utils/httpError.js';
 import {
   addMinutes,
@@ -140,8 +147,8 @@ function requireActiveResource(resource, notFoundMessage, inactiveMessage) {
   return resource;
 }
 
-function requireTenantAppointment(organizationId, appointmentId) {
-  const appointment = findById(organizationId, appointmentId);
+async function requireTenantAppointment(organizationId, appointmentId, { session } = {}) {
+  const appointment = await findById(organizationId, appointmentId, { session });
 
   if (!appointment) {
     throw httpError(404, 'Cita no encontrada');
@@ -150,45 +157,56 @@ function requireTenantAppointment(organizationId, appointmentId) {
   return appointment;
 }
 
-function assertActiveBookingResources(organizationId, appointment) {
+async function assertActiveBookingResources(organizationId, appointment, { session } = {}) {
   requireActiveResource(
-    findClientById(organizationId, appointment.client_id),
+    await findClientById(organizationId, appointment.client_id, { session }),
     'Cliente no encontrado',
     'El cliente no está activo'
   );
   requireActiveResource(
-    findProfessionalById(organizationId, appointment.professional_id),
+    await findProfessionalById(organizationId, appointment.professional_id, { session }),
     'Profesional no encontrado',
     'El profesional no está activo'
   );
   requireActiveResource(
-    findServiceById(organizationId, appointment.service_id),
+    await findServiceById(organizationId, appointment.service_id, { session }),
     'Servicio no encontrado',
     'El servicio no está activo'
   );
 
-  if (!assignmentExists(organizationId, appointment.professional_id, appointment.service_id)) {
+  if (
+    !(await assignmentExists(
+      organizationId,
+      appointment.professional_id,
+      appointment.service_id,
+      { session }
+    ))
+  ) {
     throw httpError(409, 'El profesional no está habilitado para este servicio');
   }
 }
 
-function assertSlotAvailable({
-  organizationId,
-  professionalId,
-  startAt,
-  endAt,
-  excludeAppointmentId = null,
-}) {
+async function assertSlotAvailable(
+  {
+    organizationId,
+    professionalId,
+    startAt,
+    endAt,
+    excludeAppointmentId = null,
+  },
+  { session } = {}
+) {
   if (getDatePart(startAt) !== getDatePart(endAt)) {
     throw httpError(409, 'La cita debe comenzar y terminar el mismo día');
   }
 
-  const coveringSchedule = findCoveringSchedule(
+  const coveringSchedule = await findCoveringSchedule(
     organizationId,
     professionalId,
     getDayOfWeek(startAt),
     getTimePart(startAt),
-    getTimePart(endAt)
+    getTimePart(endAt),
+    { session }
   );
 
   if (!coveringSchedule) {
@@ -196,30 +214,36 @@ function assertSlotAvailable({
   }
 
   if (
-    hasAvailabilityBlockOverlap({
-      organizationId,
-      professionalId,
-      startAt,
-      endAt,
-    })
+    await hasAvailabilityBlockOverlap(
+      {
+        organizationId,
+        professionalId,
+        startAt,
+        endAt,
+      },
+      { session }
+    )
   ) {
     throw httpError(409, 'La cita intersecta un bloque de indisponibilidad');
   }
 
   if (
-    hasActiveOverlap({
-      organizationId,
-      professionalId,
-      startAt,
-      endAt,
-      excludeAppointmentId,
-    })
+    await hasActiveOverlap(
+      {
+        organizationId,
+        professionalId,
+        startAt,
+        endAt,
+        excludeAppointmentId,
+      },
+      { session }
+    )
   ) {
     throw httpError(409, 'El profesional ya tiene una cita en ese horario');
   }
 }
 
-function applyStatusTransition({
+async function applyStatusTransition({
   organizationId,
   appointmentId,
   targetStatus,
@@ -229,8 +253,8 @@ function applyStatusTransition({
   expectedProfessionalId = null,
   expectedClientId = null,
 }) {
-  return runInImmediateTransaction(() => {
-    const appointment = requireTenantAppointment(organizationId, appointmentId);
+  return withTransaction(async (session) => {
+    const appointment = await requireTenantAppointment(organizationId, appointmentId, { session });
 
     if (expectedProfessionalId && appointment.professional_id !== expectedProfessionalId) {
       throw httpError(404, 'Cita no encontrada');
@@ -252,23 +276,29 @@ function applyStatusTransition({
       extraCheck(appointment);
     }
 
-    updateStatus(organizationId, appointmentId, targetStatus);
-    const updated = findById(organizationId, appointmentId);
+    await updateStatus(organizationId, appointmentId, targetStatus, { session });
+    const updated = await findById(organizationId, appointmentId, { session });
 
     if (targetStatus === 'CONFIRMADA') {
-      createAppointmentEventNotifications({
-        organizationId,
-        appointment: updated,
-        eventType: 'CONFIRMED',
-      });
+      await createAppointmentEventNotifications(
+        {
+          organizationId,
+          appointment: updated,
+          eventType: 'CONFIRMED',
+        },
+        { session }
+      );
     }
 
     if (targetStatus === 'CANCELADA') {
-      createAppointmentEventNotifications({
-        organizationId,
-        appointment: updated,
-        eventType: 'CANCELLED',
-      });
+      await createAppointmentEventNotifications(
+        {
+          organizationId,
+          appointment: updated,
+          eventType: 'CANCELLED',
+        },
+        { session }
+      );
     }
 
     return toAppointmentResponse(updated);
@@ -287,25 +317,32 @@ export async function createAppointment(organizationId, body) {
   const professionalId = parseRequiredId(payload.professionalId, 'professionalId');
   const serviceId = parseRequiredId(payload.serviceId, 'serviceId');
   const startAt = parseStartAt(payload.startAt);
+  const id = randomUUID();
+  const lockDate = extractLockDate(startAt);
 
-  return runInImmediateTransaction(() => {
+  return withDayLockTransaction(async (session) => {
+    await acquireProfessionalDayLock(
+      { organizationId, professionalId, date: lockDate },
+      { session }
+    );
+
     const client = requireActiveResource(
-      findClientById(organizationId, clientId),
+      await findClientById(organizationId, clientId, { session }),
       'Cliente no encontrado',
       'El cliente no está activo'
     );
     const professional = requireActiveResource(
-      findProfessionalById(organizationId, professionalId),
+      await findProfessionalById(organizationId, professionalId, { session }),
       'Profesional no encontrado',
       'El profesional no está activo'
     );
     const service = requireActiveResource(
-      findServiceById(organizationId, serviceId),
+      await findServiceById(organizationId, serviceId, { session }),
       'Servicio no encontrado',
       'El servicio no está activo'
     );
 
-    if (!assignmentExists(organizationId, professional.id, service.id)) {
+    if (!(await assignmentExists(organizationId, professional.id, service.id, { session }))) {
       throw httpError(409, 'El profesional no está habilitado para este servicio');
     }
 
@@ -315,33 +352,40 @@ export async function createAppointment(organizationId, body) {
       throw httpError(400, 'startAt debe tener el formato YYYY-MM-DDTHH:mm y ser una fecha real');
     }
 
-    assertSlotAvailable({
-      organizationId,
-      professionalId: professional.id,
-      startAt,
-      endAt,
-    });
+    await assertSlotAvailable(
+      {
+        organizationId,
+        professionalId: professional.id,
+        startAt,
+        endAt,
+      },
+      { session }
+    );
 
-    const id = randomUUID();
+    await insertAppointment(
+      {
+        id,
+        organizationId,
+        clientId: client.id,
+        professionalId: professional.id,
+        serviceId: service.id,
+        startAt,
+        endAt,
+        serviceDurationMinutes: service.duration_minutes,
+        servicePriceMinorUnits: service.price_minor_units,
+      },
+      { session }
+    );
 
-    insertAppointment({
-      id,
-      organizationId,
-      clientId: client.id,
-      professionalId: professional.id,
-      serviceId: service.id,
-      startAt,
-      endAt,
-      serviceDurationMinutes: service.duration_minutes,
-      servicePriceMinorUnits: service.price_minor_units,
-    });
-
-    const created = findById(organizationId, id);
-    createAppointmentEventNotifications({
-      organizationId,
-      appointment: created,
-      eventType: 'CREATED',
-    });
+    const created = await findById(organizationId, id, { session });
+    await createAppointmentEventNotifications(
+      {
+        organizationId,
+        appointment: created,
+        eventType: 'CREATED',
+      },
+      { session }
+    );
 
     return toAppointmentResponse(created);
   });
@@ -449,9 +493,21 @@ export async function listAppointmentsByClient(organizationId, clientId, query) 
 
 export async function rescheduleAppointment(organizationId, appointmentId, body, options = {}) {
   const startAt = parseStartAt(body?.startAt);
+  const lockDate = extractLockDate(startAt);
 
-  return runInImmediateTransaction(() => {
-    const appointment = requireTenantAppointment(organizationId, appointmentId);
+  return withDayLockTransaction(async (session) => {
+    const initial = await requireTenantAppointment(organizationId, appointmentId, { session });
+
+    await acquireProfessionalDayLock(
+      {
+        organizationId,
+        professionalId: initial.professional_id,
+        date: lockDate,
+      },
+      { session }
+    );
+
+    const appointment = await requireTenantAppointment(organizationId, appointmentId, { session });
 
     if (options.expectedClientId && appointment.client_id !== options.expectedClientId) {
       throw httpError(404, 'Cita no encontrada');
@@ -461,7 +517,7 @@ export async function rescheduleAppointment(organizationId, appointmentId, body,
       throw httpError(409, 'La cita no se puede reprogramar');
     }
 
-    assertActiveBookingResources(organizationId, appointment);
+    await assertActiveBookingResources(organizationId, appointment, { session });
 
     const endAt = addMinutes(startAt, appointment.service_duration_minutes);
 
@@ -469,23 +525,29 @@ export async function rescheduleAppointment(organizationId, appointmentId, body,
       throw httpError(400, 'startAt debe tener el formato YYYY-MM-DDTHH:mm y ser una fecha real');
     }
 
-    assertSlotAvailable({
-      organizationId,
-      professionalId: appointment.professional_id,
-      startAt,
-      endAt,
-      excludeAppointmentId: appointment.id,
-    });
+    await assertSlotAvailable(
+      {
+        organizationId,
+        professionalId: appointment.professional_id,
+        startAt,
+        endAt,
+        excludeAppointmentId: appointment.id,
+      },
+      { session }
+    );
 
     const previousStartAt = appointment.start_at;
-    updateAppointmentSchedule(organizationId, appointmentId, { startAt, endAt });
-    const updated = findById(organizationId, appointmentId);
-    createAppointmentEventNotifications({
-      organizationId,
-      appointment: updated,
-      eventType: 'RESCHEDULED',
-      previousStartAt,
-    });
+    await updateAppointmentSchedule(organizationId, appointmentId, { startAt, endAt }, { session });
+    const updated = await findById(organizationId, appointmentId, { session });
+    await createAppointmentEventNotifications(
+      {
+        organizationId,
+        appointment: updated,
+        eventType: 'RESCHEDULED',
+        previousStartAt,
+      },
+      { session }
+    );
 
     return toAppointmentResponse(updated);
   });

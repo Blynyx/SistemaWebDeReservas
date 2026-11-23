@@ -52,108 +52,142 @@ function parseIsRead(value) {
   return value;
 }
 
-function notifyRecipient({
-  organizationId,
-  recipientUserAccountId,
-  appointmentId,
-  type,
-  title,
-  message,
-}) {
-  if (!recipientUserAccountId) {
-    return;
-  }
-
-  insertNotification({
-    id: randomUUID(),
+async function notifyRecipient(
+  {
     organizationId,
     recipientUserAccountId,
     appointmentId,
     type,
     title,
     message,
-  });
+  },
+  { session } = {}
+) {
+  if (!recipientUserAccountId) {
+    return;
+  }
+
+  await insertNotification(
+    {
+      id: randomUUID(),
+      organizationId,
+      recipientUserAccountId,
+      appointmentId,
+      type,
+      title,
+      message,
+    },
+    { session }
+  );
 }
 
-export function createAppointmentEventNotifications({
-  organizationId,
-  appointment,
-  eventType,
-  previousStartAt = null,
-}) {
-  const client = findClientById(organizationId, appointment.client_id);
-  const professional = findProfessionalById(organizationId, appointment.professional_id);
+export async function createAppointmentEventNotifications(
+  {
+    organizationId,
+    appointment,
+    eventType,
+    previousStartAt = null,
+  },
+  { session } = {}
+) {
+  const client = await findClientById(organizationId, appointment.client_id, { session });
+  const professional = await findProfessionalById(
+    organizationId,
+    appointment.professional_id,
+    { session }
+  );
   const startAt = appointment.start_at;
 
   if (eventType === 'CREATED') {
-    notifyRecipient({
-      organizationId,
-      recipientUserAccountId: client?.user_account_id,
-      appointmentId: appointment.id,
-      type: 'APPOINTMENT_CREATED',
-      title: 'Reserva creada',
-      message: `Tu cita del ${startAt} fue creada correctamente.`,
-    });
-    notifyRecipient({
-      organizationId,
-      recipientUserAccountId: professional?.user_account_id,
-      appointmentId: appointment.id,
-      type: 'APPOINTMENT_ASSIGNED',
-      title: 'Nueva cita asignada',
-      message: `Se te asignó una nueva cita para ${startAt}.`,
-    });
+    await notifyRecipient(
+      {
+        organizationId,
+        recipientUserAccountId: client?.user_account_id,
+        appointmentId: appointment.id,
+        type: 'APPOINTMENT_CREATED',
+        title: 'Reserva creada',
+        message: `Tu cita del ${startAt} fue creada correctamente.`,
+      },
+      { session }
+    );
+    await notifyRecipient(
+      {
+        organizationId,
+        recipientUserAccountId: professional?.user_account_id,
+        appointmentId: appointment.id,
+        type: 'APPOINTMENT_ASSIGNED',
+        title: 'Nueva cita asignada',
+        message: `Se te asignó una nueva cita para ${startAt}.`,
+      },
+      { session }
+    );
     return;
   }
 
   if (eventType === 'CONFIRMED') {
-    notifyRecipient({
-      organizationId,
-      recipientUserAccountId: client?.user_account_id,
-      appointmentId: appointment.id,
-      type: 'APPOINTMENT_CONFIRMED',
-      title: 'Cita confirmada',
-      message: `Tu cita del ${startAt} fue confirmada.`,
-    });
+    await notifyRecipient(
+      {
+        organizationId,
+        recipientUserAccountId: client?.user_account_id,
+        appointmentId: appointment.id,
+        type: 'APPOINTMENT_CONFIRMED',
+        title: 'Cita confirmada',
+        message: `Tu cita del ${startAt} fue confirmada.`,
+      },
+      { session }
+    );
     return;
   }
 
   if (eventType === 'RESCHEDULED') {
-    notifyRecipient({
-      organizationId,
-      recipientUserAccountId: client?.user_account_id,
-      appointmentId: appointment.id,
-      type: 'APPOINTMENT_RESCHEDULED',
-      title: 'Cita reprogramada',
-      message: `Tu cita fue reprogramada de ${previousStartAt} a ${startAt}.`,
-    });
-    notifyRecipient({
-      organizationId,
-      recipientUserAccountId: professional?.user_account_id,
-      appointmentId: appointment.id,
-      type: 'APPOINTMENT_RESCHEDULED',
-      title: 'Cita reprogramada',
-      message: `Una cita asignada fue reprogramada de ${previousStartAt} a ${startAt}.`,
-    });
+    await notifyRecipient(
+      {
+        organizationId,
+        recipientUserAccountId: client?.user_account_id,
+        appointmentId: appointment.id,
+        type: 'APPOINTMENT_RESCHEDULED',
+        title: 'Cita reprogramada',
+        message: `Tu cita fue reprogramada de ${previousStartAt} a ${startAt}.`,
+      },
+      { session }
+    );
+    await notifyRecipient(
+      {
+        organizationId,
+        recipientUserAccountId: professional?.user_account_id,
+        appointmentId: appointment.id,
+        type: 'APPOINTMENT_RESCHEDULED',
+        title: 'Cita reprogramada',
+        message: `Una cita asignada fue reprogramada de ${previousStartAt} a ${startAt}.`,
+      },
+      { session }
+    );
     return;
   }
 
   if (eventType === 'CANCELLED') {
-    notifyRecipient({
-      organizationId,
-      recipientUserAccountId: client?.user_account_id,
-      appointmentId: appointment.id,
-      type: 'APPOINTMENT_CANCELLED',
-      title: 'Cita cancelada',
-      message: `Tu cita del ${startAt} fue cancelada.`,
-    });
-    notifyRecipient({
-      organizationId,
-      recipientUserAccountId: professional?.user_account_id,
-      appointmentId: appointment.id,
-      type: 'APPOINTMENT_CANCELLED',
-      title: 'Cita cancelada',
-      message: `Una cita asignada para ${startAt} fue cancelada.`,
-    });
+    await notifyRecipient(
+      {
+        organizationId,
+        recipientUserAccountId: client?.user_account_id,
+        appointmentId: appointment.id,
+        type: 'APPOINTMENT_CANCELLED',
+        title: 'Cita cancelada',
+        message: `Tu cita del ${startAt} fue cancelada.`,
+      },
+      { session }
+    );
+    await notifyRecipient(
+      {
+        organizationId,
+        recipientUserAccountId: professional?.user_account_id,
+        appointmentId: appointment.id,
+        type: 'APPOINTMENT_CANCELLED',
+        title: 'Cita cancelada',
+        message: `Una cita asignada para ${startAt} fue cancelada.`,
+      },
+      { session }
+    );
   }
 }
 

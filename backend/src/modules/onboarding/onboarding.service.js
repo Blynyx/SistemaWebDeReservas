@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
-import { runInTransaction } from '../../database/transaction.js';
+import { isDuplicateKeyError } from '../../database/mongodb/errors.js';
+import { withTransaction } from '../../database/mongodb/transaction.js';
 import { insertOrganization, slugExists } from '../organizations/organization.repository.js';
 import { insertUserAccount } from '../userAccounts/userAccount.repository.js';
 import { httpError } from '../../utils/httpError.js';
@@ -31,7 +32,7 @@ function validateOnboardingInput(body) {
   return { organizationName, adminEmail, adminPassword };
 }
 
-function resolveAvailableSlug(organizationName) {
+async function resolveAvailableSlug(organizationName, session) {
   const baseSlug = slugify(organizationName);
 
   if (!baseSlug) {
@@ -41,7 +42,7 @@ function resolveAvailableSlug(organizationName) {
   for (let attempt = 1; attempt <= MAX_SLUG_ATTEMPTS; attempt += 1) {
     const candidate = uniqueSlugCandidate(baseSlug, attempt);
 
-    if (!slugExists(candidate)) {
+    if (!(await slugExists(candidate, { session }))) {
       return candidate;
     }
   }
@@ -56,35 +57,48 @@ export async function onboardOrganization(body) {
   const adminId = randomUUID();
   const passwordHash = await hashPassword(adminPassword);
 
-  return runInTransaction(() => {
-    const slug = resolveAvailableSlug(organizationName);
+  try {
+    return await withTransaction(async (session) => {
+      const slug = await resolveAvailableSlug(organizationName, session);
 
-    insertOrganization({
-      id: organizationId,
-      name: organizationName,
-      slug,
+      await insertOrganization(
+        {
+          id: organizationId,
+          name: organizationName,
+          slug,
+        },
+        { session }
+      );
+
+      await insertUserAccount(
+        {
+          id: adminId,
+          organizationId,
+          email: adminEmail,
+          passwordHash,
+          role: 'ADMIN',
+          isActive: 1,
+        },
+        { session }
+      );
+
+      return {
+        organization: {
+          id: organizationId,
+          name: organizationName,
+          slug,
+        },
+        admin: {
+          id: adminId,
+          email: adminEmail,
+          role: 'ADMIN',
+        },
+      };
     });
-
-    insertUserAccount({
-      id: adminId,
-      organizationId,
-      email: adminEmail,
-      passwordHash,
-      role: 'ADMIN',
-      isActive: 1,
-    });
-
-    return {
-      organization: {
-        id: organizationId,
-        name: organizationName,
-        slug,
-      },
-      admin: {
-        id: adminId,
-        email: adminEmail,
-        role: 'ADMIN',
-      },
-    };
-  });
+  } catch (error) {
+    if (isDuplicateKeyError(error)) {
+      throw httpError(409, 'No fue posible generar un identificador público único');
+    }
+    throw error;
+  }
 }
