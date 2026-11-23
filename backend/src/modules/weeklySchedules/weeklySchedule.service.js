@@ -24,8 +24,8 @@ function toScheduleResponse(row) {
   };
 }
 
-function requireTenantProfessional(organizationId, professionalId) {
-  const professional = findProfessionalById(organizationId, professionalId);
+async function requireTenantProfessional(organizationId, professionalId) {
+  const professional = await findProfessionalById(organizationId, professionalId);
 
   if (!professional) {
     throw httpError(404, 'Profesional no encontrado');
@@ -72,7 +72,7 @@ function validateInterval(dayOfWeek, startTime, endTime) {
   };
 }
 
-function assertNoOverlap({
+async function assertNoOverlap({
   organizationId,
   professionalId,
   dayOfWeek,
@@ -81,7 +81,7 @@ function assertNoOverlap({
   excludeScheduleId = null,
 }) {
   if (
-    hasOverlap({
+    await hasOverlap({
       organizationId,
       professionalId,
       dayOfWeek,
@@ -94,13 +94,13 @@ function assertNoOverlap({
   }
 }
 
-export function createWeeklySchedule(organizationId, professionalId, body) {
-  const professional = requireTenantProfessional(organizationId, professionalId);
+export async function createWeeklySchedule(organizationId, professionalId, body) {
+  const professional = await requireTenantProfessional(organizationId, professionalId);
   requireActiveProfessional(professional);
 
   const interval = validateInterval(body?.dayOfWeek, body?.startTime, body?.endTime);
 
-  assertNoOverlap({
+  await assertNoOverlap({
     organizationId,
     professionalId,
     ...interval,
@@ -108,23 +108,24 @@ export function createWeeklySchedule(organizationId, professionalId, body) {
 
   const id = randomUUID();
 
-  insertSchedule({
+  await insertSchedule({
     id,
     organizationId,
     professionalId,
     ...interval,
   });
 
-  return toScheduleResponse(findById(organizationId, professionalId, id));
+  return toScheduleResponse(await findById(organizationId, professionalId, id));
 }
 
-export function listWeeklySchedules(organizationId, professionalId) {
-  requireTenantProfessional(organizationId, professionalId);
+export async function listWeeklySchedules(organizationId, professionalId) {
+  await requireTenantProfessional(organizationId, professionalId);
 
-  return findAllByProfessional(organizationId, professionalId).map(toScheduleResponse);
+  const schedules = await findAllByProfessional(organizationId, professionalId);
+  return schedules.map(toScheduleResponse);
 }
 
-export function patchWeeklySchedule(organizationId, professionalId, scheduleId, body) {
+export async function patchWeeklySchedule(organizationId, professionalId, scheduleId, body) {
   const payload = body ?? {};
   const hasUpdatableField = ['dayOfWeek', 'startTime', 'endTime'].some(
     (field) => payload[field] !== undefined
@@ -134,10 +135,10 @@ export function patchWeeklySchedule(organizationId, professionalId, scheduleId, 
     throw httpError(400, 'Debe enviar al menos un campo modificable');
   }
 
-  const professional = requireTenantProfessional(organizationId, professionalId);
+  const professional = await requireTenantProfessional(organizationId, professionalId);
   requireActiveProfessional(professional);
 
-  const current = findById(organizationId, professionalId, scheduleId);
+  const current = await findById(organizationId, professionalId, scheduleId);
 
   if (!current) {
     throw httpError(404, 'Horario no encontrado');
@@ -149,22 +150,22 @@ export function patchWeeklySchedule(organizationId, professionalId, scheduleId, 
     payload.endTime ?? current.end_time
   );
 
-  assertNoOverlap({
+  await assertNoOverlap({
     organizationId,
     professionalId,
     ...interval,
     excludeScheduleId: scheduleId,
   });
 
-  updateSchedule(organizationId, professionalId, scheduleId, {
+  await updateSchedule(organizationId, professionalId, scheduleId, {
     ...interval,
     updatedAt: new Date().toISOString(),
   });
 
-  return toScheduleResponse(findById(organizationId, professionalId, scheduleId));
+  return toScheduleResponse(await findById(organizationId, professionalId, scheduleId));
 }
 
-export function removeWeeklySchedule(organizationId, professionalId, scheduleId) {
-  requireTenantProfessional(organizationId, professionalId);
-  removeSchedule(organizationId, professionalId, scheduleId);
+export async function removeWeeklySchedule(organizationId, professionalId, scheduleId) {
+  await requireTenantProfessional(organizationId, professionalId);
+  await removeSchedule(organizationId, professionalId, scheduleId);
 }

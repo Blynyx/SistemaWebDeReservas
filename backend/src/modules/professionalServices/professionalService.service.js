@@ -20,8 +20,8 @@ function toAssignedServiceResponse(row) {
   };
 }
 
-function requireTenantProfessional(organizationId, professionalId) {
-  const professional = findProfessionalById(organizationId, professionalId);
+async function requireTenantProfessional(organizationId, professionalId) {
+  const professional = await findProfessionalById(organizationId, professionalId);
 
   if (!professional) {
     throw httpError(404, 'Profesional no encontrado');
@@ -30,8 +30,8 @@ function requireTenantProfessional(organizationId, professionalId) {
   return professional;
 }
 
-function requireTenantService(organizationId, serviceId) {
-  const service = findServiceById(organizationId, serviceId);
+async function requireTenantService(organizationId, serviceId) {
+  const service = await findServiceById(organizationId, serviceId);
 
   if (!service) {
     throw httpError(404, 'Servicio no encontrado');
@@ -48,10 +48,10 @@ function parseServiceId(serviceId) {
   return serviceId.trim();
 }
 
-export function assignServiceToProfessional(organizationId, professionalId, body) {
+export async function assignServiceToProfessional(organizationId, professionalId, body) {
   const serviceId = parseServiceId(body?.serviceId);
-  const professional = requireTenantProfessional(organizationId, professionalId);
-  const service = requireTenantService(organizationId, serviceId);
+  const professional = await requireTenantProfessional(organizationId, professionalId);
+  const service = await requireTenantService(organizationId, serviceId);
 
   if (professional.is_active !== 1) {
     throw httpError(409, 'El profesional no está activo');
@@ -61,13 +61,13 @@ export function assignServiceToProfessional(organizationId, professionalId, body
     throw httpError(409, 'El servicio no está activo');
   }
 
-  if (assignmentExists(organizationId, professionalId, serviceId)) {
+  if (await assignmentExists(organizationId, professionalId, serviceId)) {
     throw httpError(409, 'El servicio ya está asignado a este profesional');
   }
 
-  insertAssignment({ organizationId, professionalId, serviceId });
+  await insertAssignment({ organizationId, professionalId, serviceId });
 
-  const assignment = findAssignment(organizationId, professionalId, serviceId);
+  const assignment = await findAssignment(organizationId, professionalId, serviceId);
 
   return {
     professionalId: assignment.professional_id,
@@ -76,14 +76,15 @@ export function assignServiceToProfessional(organizationId, professionalId, body
   };
 }
 
-export function listAssignedServices(organizationId, professionalId) {
-  requireTenantProfessional(organizationId, professionalId);
+export async function listAssignedServices(organizationId, professionalId) {
+  await requireTenantProfessional(organizationId, professionalId);
 
-  return findServicesByProfessional(organizationId, professionalId).map(toAssignedServiceResponse);
+  const services = await findServicesByProfessional(organizationId, professionalId);
+  return services.map(toAssignedServiceResponse);
 }
 
-export function unassignServiceFromProfessional(organizationId, professionalId, serviceId) {
-  requireTenantProfessional(organizationId, professionalId);
-  requireTenantService(organizationId, parseServiceId(serviceId));
-  removeAssignment(organizationId, professionalId, serviceId);
+export async function unassignServiceFromProfessional(organizationId, professionalId, serviceId) {
+  await requireTenantProfessional(organizationId, professionalId);
+  await requireTenantService(organizationId, parseServiceId(serviceId));
+  await removeAssignment(organizationId, professionalId, serviceId);
 }

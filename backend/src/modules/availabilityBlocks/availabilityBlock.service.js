@@ -24,8 +24,8 @@ function toBlockResponse(row) {
   };
 }
 
-function requireTenantProfessional(organizationId, professionalId) {
-  const professional = findProfessionalById(organizationId, professionalId);
+async function requireTenantProfessional(organizationId, professionalId) {
+  const professional = await findProfessionalById(organizationId, professionalId);
 
   if (!professional) {
     throw httpError(404, 'Profesional no encontrado');
@@ -95,7 +95,7 @@ function validateInterval(startAt, endAt) {
   };
 }
 
-function assertNoOverlap({
+async function assertNoOverlap({
   organizationId,
   professionalId,
   startAt,
@@ -103,7 +103,7 @@ function assertNoOverlap({
   excludeBlockId = null,
 }) {
   if (
-    hasOverlap({
+    await hasOverlap({
       organizationId,
       professionalId,
       startAt,
@@ -115,14 +115,14 @@ function assertNoOverlap({
   }
 }
 
-export function createAvailabilityBlock(organizationId, professionalId, body) {
-  const professional = requireTenantProfessional(organizationId, professionalId);
+export async function createAvailabilityBlock(organizationId, professionalId, body) {
+  const professional = await requireTenantProfessional(organizationId, professionalId);
   requireActiveProfessional(professional);
 
   const interval = validateInterval(body?.startAt, body?.endAt);
   const reason = parseReason(body?.reason, { required: true });
 
-  assertNoOverlap({
+  await assertNoOverlap({
     organizationId,
     professionalId,
     ...interval,
@@ -130,7 +130,7 @@ export function createAvailabilityBlock(organizationId, professionalId, body) {
 
   const id = randomUUID();
 
-  insertBlock({
+  await insertBlock({
     id,
     organizationId,
     professionalId,
@@ -138,16 +138,17 @@ export function createAvailabilityBlock(organizationId, professionalId, body) {
     reason,
   });
 
-  return toBlockResponse(findById(organizationId, professionalId, id));
+  return toBlockResponse(await findById(organizationId, professionalId, id));
 }
 
-export function listAvailabilityBlocks(organizationId, professionalId) {
-  requireTenantProfessional(organizationId, professionalId);
+export async function listAvailabilityBlocks(organizationId, professionalId) {
+  await requireTenantProfessional(organizationId, professionalId);
 
-  return findAllByProfessional(organizationId, professionalId).map(toBlockResponse);
+  const blocks = await findAllByProfessional(organizationId, professionalId);
+  return blocks.map(toBlockResponse);
 }
 
-export function patchAvailabilityBlock(organizationId, professionalId, blockId, body) {
+export async function patchAvailabilityBlock(organizationId, professionalId, blockId, body) {
   const payload = body ?? {};
   const hasUpdatableField = ['startAt', 'endAt', 'reason'].some(
     (field) => payload[field] !== undefined
@@ -157,10 +158,10 @@ export function patchAvailabilityBlock(organizationId, professionalId, blockId, 
     throw httpError(400, 'Debe enviar al menos un campo modificable');
   }
 
-  const professional = requireTenantProfessional(organizationId, professionalId);
+  const professional = await requireTenantProfessional(organizationId, professionalId);
   requireActiveProfessional(professional);
 
-  const current = findById(organizationId, professionalId, blockId);
+  const current = await findById(organizationId, professionalId, blockId);
 
   if (!current) {
     throw httpError(404, 'Bloque de disponibilidad no encontrado');
@@ -175,23 +176,23 @@ export function patchAvailabilityBlock(organizationId, professionalId, blockId, 
       ? parseReason(payload.reason, { required: false })
       : current.reason;
 
-  assertNoOverlap({
+  await assertNoOverlap({
     organizationId,
     professionalId,
     ...interval,
     excludeBlockId: blockId,
   });
 
-  updateBlock(organizationId, professionalId, blockId, {
+  await updateBlock(organizationId, professionalId, blockId, {
     ...interval,
     reason,
     updatedAt: new Date().toISOString(),
   });
 
-  return toBlockResponse(findById(organizationId, professionalId, blockId));
+  return toBlockResponse(await findById(organizationId, professionalId, blockId));
 }
 
-export function removeAvailabilityBlock(organizationId, professionalId, blockId) {
-  requireTenantProfessional(organizationId, professionalId);
-  removeBlock(organizationId, professionalId, blockId);
+export async function removeAvailabilityBlock(organizationId, professionalId, blockId) {
+  await requireTenantProfessional(organizationId, professionalId);
+  await removeBlock(organizationId, professionalId, blockId);
 }

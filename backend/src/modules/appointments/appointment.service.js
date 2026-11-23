@@ -281,7 +281,7 @@ function assertAppointmentHasEnded(appointment) {
   }
 }
 
-export function createAppointment(organizationId, body) {
+export async function createAppointment(organizationId, body) {
   const payload = body ?? {};
   const clientId = parseRequiredId(payload.clientId, 'clientId');
   const professionalId = parseRequiredId(payload.professionalId, 'professionalId');
@@ -347,7 +347,7 @@ export function createAppointment(organizationId, body) {
   });
 }
 
-export function createOwnAppointment(organizationId, clientId, body) {
+export async function createOwnAppointment(organizationId, clientId, body) {
   return createAppointment(organizationId, {
     clientId,
     professionalId: body?.professionalId,
@@ -356,7 +356,7 @@ export function createOwnAppointment(organizationId, clientId, body) {
   });
 }
 
-export function listAppointments(organizationId, query) {
+export async function listAppointments(organizationId, query) {
   const range = parseOptionalDateRange(query);
   const filters = {
     clientId: parseOptionalFilterId(query?.clientId, 'clientId'),
@@ -370,14 +370,21 @@ export function listAppointments(organizationId, query) {
     filters.rangeEnd = range.rangeEnd;
   }
 
-  return findByFilters(organizationId, filters).map(toAppointmentResponse);
+  const rows = await findByFilters(organizationId, filters);
+  return rows.map(toAppointmentResponse);
 }
 
-export function getAppointment(organizationId, appointmentId) {
-  return toAppointmentResponse(requireTenantAppointment(organizationId, appointmentId));
+export async function getAppointment(organizationId, appointmentId) {
+  const appointment = await findById(organizationId, appointmentId);
+
+  if (!appointment) {
+    throw httpError(404, 'Cita no encontrada');
+  }
+
+  return toAppointmentResponse(appointment);
 }
 
-export function confirmAppointment(organizationId, appointmentId) {
+export async function confirmAppointment(organizationId, appointmentId) {
   return applyStatusTransition({
     organizationId,
     appointmentId,
@@ -387,7 +394,7 @@ export function confirmAppointment(organizationId, appointmentId) {
   });
 }
 
-export function cancelAppointment(organizationId, appointmentId, options = {}) {
+export async function cancelAppointment(organizationId, appointmentId, options = {}) {
   return applyStatusTransition({
     organizationId,
     appointmentId,
@@ -398,7 +405,7 @@ export function cancelAppointment(organizationId, appointmentId, options = {}) {
   });
 }
 
-export function completeAppointment(organizationId, appointmentId, options = {}) {
+export async function completeAppointment(organizationId, appointmentId, options = {}) {
   return applyStatusTransition({
     organizationId,
     appointmentId,
@@ -410,7 +417,7 @@ export function completeAppointment(organizationId, appointmentId, options = {})
   });
 }
 
-export function markNoShowAppointment(organizationId, appointmentId, options = {}) {
+export async function markNoShowAppointment(organizationId, appointmentId, options = {}) {
   return applyStatusTransition({
     organizationId,
     appointmentId,
@@ -422,25 +429,25 @@ export function markNoShowAppointment(organizationId, appointmentId, options = {
   });
 }
 
-export function listAppointmentsByProfessional(organizationId, professionalId, query) {
+export async function listAppointmentsByProfessional(organizationId, professionalId, query) {
   const range = parseOptionalDateRange(query);
   const rows = range
-    ? findByProfessionalInRange(organizationId, professionalId, range.rangeStart, range.rangeEnd)
-    : findByProfessional(organizationId, professionalId);
+    ? await findByProfessionalInRange(organizationId, professionalId, range.rangeStart, range.rangeEnd)
+    : await findByProfessional(organizationId, professionalId);
 
   return rows.map(toAppointmentResponse);
 }
 
-export function listAppointmentsByClient(organizationId, clientId, query) {
+export async function listAppointmentsByClient(organizationId, clientId, query) {
   const range = parseOptionalDateRange(query);
   const rows = range
-    ? findByClientInRange(organizationId, clientId, range.rangeStart, range.rangeEnd)
-    : findByClient(organizationId, clientId);
+    ? await findByClientInRange(organizationId, clientId, range.rangeStart, range.rangeEnd)
+    : await findByClient(organizationId, clientId);
 
   return rows.map(toAppointmentResponse);
 }
 
-export function rescheduleAppointment(organizationId, appointmentId, body, options = {}) {
+export async function rescheduleAppointment(organizationId, appointmentId, body, options = {}) {
   const startAt = parseStartAt(body?.startAt);
 
   return runInImmediateTransaction(() => {

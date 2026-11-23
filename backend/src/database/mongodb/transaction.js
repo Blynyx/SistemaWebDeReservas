@@ -1,10 +1,13 @@
 import { getMongoClient } from './client.js';
+import { isProfessionalDayLockDuplicateKeyError } from './errors.js';
 
 export const DEFAULT_TRANSACTION_OPTIONS = {
   readConcern: { level: 'snapshot' },
   writeConcern: { w: 'majority' },
   readPreference: 'primary',
 };
+
+export const DEFAULT_DAY_LOCK_MAX_ATTEMPTS = 5;
 
 /**
  * Ejecuta una callback dentro de una transacción multi-documento MongoDB.
@@ -30,5 +33,35 @@ export async function withTransaction(
     return await session.withTransaction(async () => callback(session), options);
   } finally {
     await session.endSession();
+  }
+}
+
+/**
+ * Ejecuta una transacción con retry acotado externo únicamente cuando ocurre
+ * E11000 sobre el índice único de `professionalDayLocks` durante el upsert
+ * concurrente inicial. Cualquier otro E11000 o error de negocio se propaga
+ * sin reintento.
+ */
+export async function withDayLockTransaction(
+  callback,
+  {
+    client = getMongoClient(),
+    transactionOptions = {},
+    maxAttempts = DEFAULT_DAY_LOCK_MAX_ATTEMPTS,
+  } = {}
+) {
+  if (!Number.isInteger(maxAttempts) || maxAttempts < 1) {
+    throw new RangeError('maxAttempts debe ser un entero positivo');
+  }
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await withTransaction(callback, { client, transactionOptions });
+    } catch (error) {
+      if (isProfessionalDayLockDuplicateKeyError(error) && attempt < maxAttempts) {
+        continue;
+      }
+      throw error;
+    }
   }
 }

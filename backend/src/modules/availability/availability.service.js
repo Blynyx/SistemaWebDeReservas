@@ -55,8 +55,8 @@ function parseOptionalProfessionalId(value) {
   return value.trim();
 }
 
-function requireActiveService(organizationId, serviceId) {
-  const service = findServiceById(organizationId, serviceId);
+async function requireActiveService(organizationId, serviceId) {
+  const service = await findServiceById(organizationId, serviceId);
 
   if (!service) {
     throw httpError(404, 'Servicio no encontrado');
@@ -69,8 +69,8 @@ function requireActiveService(organizationId, serviceId) {
   return service;
 }
 
-function requireAssignedProfessional(organizationId, professionalId, serviceId) {
-  const professional = findProfessionalById(organizationId, professionalId);
+async function requireAssignedProfessional(organizationId, professionalId, serviceId) {
+  const professional = await findProfessionalById(organizationId, professionalId);
 
   if (!professional) {
     throw httpError(404, 'Profesional no encontrado');
@@ -80,7 +80,7 @@ function requireAssignedProfessional(organizationId, professionalId, serviceId) 
     throw httpError(409, 'El profesional no está activo');
   }
 
-  if (!assignmentExists(organizationId, professional.id, serviceId)) {
+  if (!(await assignmentExists(organizationId, professional.id, serviceId))) {
     throw httpError(409, 'El profesional no está habilitado para este servicio');
   }
 
@@ -119,7 +119,7 @@ function generateCandidates(date, startTime, endTime, durationMinutes) {
   return slots;
 }
 
-function computeProfessionalSlots({
+async function computeProfessionalSlots({
   organizationId,
   professionalId,
   date,
@@ -128,9 +128,9 @@ function computeProfessionalSlots({
   rangeStart,
   rangeEnd,
 }) {
-  const schedules = findByProfessionalAndDay(organizationId, professionalId, dayOfWeek);
-  const blocks = findBlocksInRange(organizationId, professionalId, rangeStart, rangeEnd);
-  const appointments = findActiveByProfessionalInRange(
+  const schedules = await findByProfessionalAndDay(organizationId, professionalId, dayOfWeek);
+  const blocks = await findBlocksInRange(organizationId, professionalId, rangeStart, rangeEnd);
+  const appointments = await findActiveByProfessionalInRange(
     organizationId,
     professionalId,
     rangeStart,
@@ -158,22 +158,40 @@ function computeProfessionalSlots({
     .sort((left, right) => left.startAt.localeCompare(right.startAt));
 }
 
-export function getAvailability(organizationId, query) {
+export async function getAvailability(organizationId, query) {
   const payload = query ?? {};
   const serviceId = parseRequiredQueryString(payload.serviceId, 'serviceId');
   const date = parseDate(payload.date);
   const professionalId = parseOptionalProfessionalId(payload.professionalId);
-  const service = requireActiveService(organizationId, serviceId);
+  const service = await requireActiveService(organizationId, serviceId);
 
   const professionals = professionalId
-    ? [requireAssignedProfessional(organizationId, professionalId, service.id)]
-    : findProfessionalsByService(organizationId, service.id).filter(
+    ? [await requireAssignedProfessional(organizationId, professionalId, service.id)]
+    : (await findProfessionalsByService(organizationId, service.id)).filter(
         (professional) => professional.is_active === 1
       );
 
   const dayOfWeek = getDayOfWeekFromDate(date);
   const rangeStart = `${date}T00:00`;
   const rangeEnd = `${nextDay(date)}T00:00`;
+
+  const professionalSlots = [];
+  for (const professional of professionals) {
+    const slots = await computeProfessionalSlots({
+      organizationId,
+      professionalId: professional.id,
+      date,
+      dayOfWeek,
+      durationMinutes: service.duration_minutes,
+      rangeStart,
+      rangeEnd,
+    });
+    professionalSlots.push({
+      id: professional.id,
+      name: professional.name,
+      slots,
+    });
+  }
 
   return {
     date,
@@ -184,20 +202,6 @@ export function getAvailability(organizationId, query) {
       durationMinutes: service.duration_minutes,
       priceMinorUnits: service.price_minor_units,
     },
-    professionals: professionals
-      .map((professional) => ({
-        id: professional.id,
-        name: professional.name,
-        slots: computeProfessionalSlots({
-          organizationId,
-          professionalId: professional.id,
-          date,
-          dayOfWeek,
-          durationMinutes: service.duration_minutes,
-          rangeStart,
-          rangeEnd,
-        }),
-      }))
-      .sort((left, right) => left.name.localeCompare(right.name)),
+    professionals: professionalSlots.sort((left, right) => left.name.localeCompare(right.name)),
   };
 }

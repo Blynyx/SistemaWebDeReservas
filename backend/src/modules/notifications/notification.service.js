@@ -157,21 +157,29 @@ export function createAppointmentEventNotifications({
   }
 }
 
-export function listMyNotifications(organizationId, recipientUserAccountId, query) {
+export async function listMyNotifications(organizationId, recipientUserAccountId, query) {
   const filter = parseStatusFilter(query?.status);
-  const notifications = findByRecipient(organizationId, recipientUserAccountId, filter).map(
-    toNotificationResponse
-  );
+  const rows = await findByRecipient(organizationId, recipientUserAccountId, filter);
+  const unreadCount = await countUnread(organizationId, recipientUserAccountId);
 
   return {
-    notifications,
-    unreadCount: countUnread(organizationId, recipientUserAccountId),
+    notifications: rows.map(toNotificationResponse),
+    unreadCount,
   };
 }
 
-export function updateMyNotificationReadState(organizationId, recipientUserAccountId, notificationId, body) {
+export async function updateMyNotificationReadState(
+  organizationId,
+  recipientUserAccountId,
+  notificationId,
+  body
+) {
   const isRead = parseIsRead(body?.isRead);
-  const current = findByRecipientAndId(organizationId, recipientUserAccountId, notificationId);
+  const current = await findByRecipientAndId(
+    organizationId,
+    recipientUserAccountId,
+    notificationId
+  );
 
   if (!current) {
     throw httpError(404, 'Notificación no encontrada');
@@ -180,10 +188,10 @@ export function updateMyNotificationReadState(organizationId, recipientUserAccou
   const alreadyInState = (isRead && current.is_read === 1) || (!isRead && current.is_read === 0);
 
   if (!alreadyInState) {
-    setReadState(organizationId, recipientUserAccountId, notificationId, isRead);
+    await setReadState(organizationId, recipientUserAccountId, notificationId, isRead);
   }
 
   return toNotificationResponse(
-    findByRecipientAndId(organizationId, recipientUserAccountId, notificationId)
+    await findByRecipientAndId(organizationId, recipientUserAccountId, notificationId)
   );
 }

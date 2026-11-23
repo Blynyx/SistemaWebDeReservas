@@ -30,9 +30,9 @@ export function getMyClientController(req, res, next) {
   }
 }
 
-export function listMyProfessionalAppointmentsController(req, res, next) {
+export async function listMyProfessionalAppointmentsController(req, res, next) {
   try {
-    const appointments = listMyProfessionalAppointments(
+    const appointments = await listMyProfessionalAppointments(
       req.user.organizationId,
       req.domain.id,
       req.query
@@ -43,27 +43,27 @@ export function listMyProfessionalAppointmentsController(req, res, next) {
   }
 }
 
-export function createMyAppointmentController(req, res, next) {
+export async function createMyAppointmentController(req, res, next) {
   try {
-    const result = createMyAppointment(req.user.organizationId, req.domain.id, req.body);
+    const result = await createMyAppointment(req.user.organizationId, req.domain.id, req.body);
     res.status(201).json(result);
   } catch (error) {
     next(error);
   }
 }
 
-export function cancelMyAppointmentController(req, res, next) {
+export async function cancelMyAppointmentController(req, res, next) {
   try {
-    const result = cancelMyAppointment(req.user.organizationId, req.domain.id, req.params.id);
+    const result = await cancelMyAppointment(req.user.organizationId, req.domain.id, req.params.id);
     res.status(200).json(result);
   } catch (error) {
     next(error);
   }
 }
 
-export function rescheduleMyAppointmentController(req, res, next) {
+export async function rescheduleMyAppointmentController(req, res, next) {
   try {
-    const result = rescheduleMyAppointment(
+    const result = await rescheduleMyAppointment(
       req.user.organizationId,
       req.domain.id,
       req.params.id,
@@ -75,9 +75,9 @@ export function rescheduleMyAppointmentController(req, res, next) {
   }
 }
 
-export function listMyClientAppointmentsController(req, res, next) {
+export async function listMyClientAppointmentsController(req, res, next) {
   try {
-    const appointments = listMyClientAppointments(
+    const appointments = await listMyClientAppointments(
       req.user.organizationId,
       req.domain.id,
       req.query
@@ -88,45 +88,45 @@ export function listMyClientAppointmentsController(req, res, next) {
   }
 }
 
-export function completeMyAppointmentController(req, res, next) {
+export async function completeMyAppointmentController(req, res, next) {
   try {
-    const result = completeMyAppointment(req.user.organizationId, req.domain.id, req.params.id);
+    const result = await completeMyAppointment(req.user.organizationId, req.domain.id, req.params.id);
     res.status(200).json(result);
   } catch (error) {
     next(error);
   }
 }
 
-export function markMyAppointmentNoShowController(req, res, next) {
+export async function markMyAppointmentNoShowController(req, res, next) {
   try {
-    const result = markMyAppointmentNoShow(req.user.organizationId, req.domain.id, req.params.id);
+    const result = await markMyAppointmentNoShow(req.user.organizationId, req.domain.id, req.params.id);
     res.status(200).json(result);
   } catch (error) {
     next(error);
   }
 }
 
-export function createMyAvailabilityBlockController(req, res, next) {
+export async function createMyAvailabilityBlockController(req, res, next) {
   try {
-    const result = createMyAvailabilityBlock(req.user.organizationId, req.domain.id, req.body);
+    const result = await createMyAvailabilityBlock(req.user.organizationId, req.domain.id, req.body);
     res.status(201).json(result);
   } catch (error) {
     next(error);
   }
 }
 
-export function listMyAvailabilityBlocksController(req, res, next) {
+export async function listMyAvailabilityBlocksController(req, res, next) {
   try {
-    const blocks = listMyAvailabilityBlocks(req.user.organizationId, req.domain.id);
+    const blocks = await listMyAvailabilityBlocks(req.user.organizationId, req.domain.id);
     res.status(200).json({ blocks });
   } catch (error) {
     next(error);
   }
 }
 
-export function patchMyAvailabilityBlockController(req, res, next) {
+export async function patchMyAvailabilityBlockController(req, res, next) {
   try {
-    const result = patchMyAvailabilityBlock(
+    const result = await patchMyAvailabilityBlock(
       req.user.organizationId,
       req.domain.id,
       req.params.blockId,
@@ -138,9 +138,9 @@ export function patchMyAvailabilityBlockController(req, res, next) {
   }
 }
 
-export function deleteMyAvailabilityBlockController(req, res, next) {
+export async function deleteMyAvailabilityBlockController(req, res, next) {
   try {
-    removeMyAvailabilityBlock(req.user.organizationId, req.domain.id, req.params.blockId);
+    await removeMyAvailabilityBlock(req.user.organizationId, req.domain.id, req.params.blockId);
     res.status(204).end();
   } catch (error) {
     next(error);

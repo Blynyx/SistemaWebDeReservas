@@ -94,3 +94,90 @@ export function mapClientToLegacy(doc) {
     updated_at: doc.updatedAt ?? null,
   };
 }
+
+export function mapProfessionalServiceToLegacy(doc) {
+  if (!doc) {
+    return null;
+  }
+
+  return {
+    organization_id: doc.organizationId,
+    professional_id: doc.professionalId,
+    service_id: doc.serviceId,
+    created_at: doc.createdAt ?? null,
+  };
+}
+
+export function mapWeeklyScheduleToLegacy(doc) {
+  if (!doc) {
+    return null;
+  }
+
+  return {
+    id: doc.id,
+    organization_id: doc.organizationId,
+    professional_id: doc.professionalId,
+    day_of_week: doc.dayOfWeek,
+    start_time: doc.startTime,
+    end_time: doc.endTime,
+    created_at: doc.createdAt ?? null,
+    updated_at: doc.updatedAt ?? null,
+  };
+}
+
+export function mapAvailabilityBlockToLegacy(doc) {
+  if (!doc) {
+    return null;
+  }
+
+  return {
+    id: doc.id,
+    organization_id: doc.organizationId,
+    professional_id: doc.professionalId,
+    start_at: doc.startAt,
+    end_at: doc.endAt,
+    reason: doc.reason ?? null,
+    created_at: doc.createdAt ?? null,
+    updated_at: doc.updatedAt ?? null,
+  };
+}
+
+export function mapAppointmentToLegacy(doc) {
+  if (!doc) {
+    return null;
+  }
+
+  return {
+    id: doc.id,
+    organization_id: doc.organizationId,
+    client_id: doc.clientId,
+    professional_id: doc.professionalId,
+    service_id: doc.serviceId,
+    start_at: doc.startAt,
+    end_at: doc.endAt,
+    service_duration_minutes: doc.serviceDurationMinutes,
+    service_price_minor_units: doc.servicePriceMinorUnits,
+    status: doc.status,
+    created_at: doc.createdAt ?? null,
+    updated_at: doc.updatedAt ?? null,
+  };
+}
+
+export function mapNotificationToLegacy(doc) {
+  if (!doc) {
+    return null;
+  }
+
+  return {
+    id: doc.id,
+    organization_id: doc.organizationId,
+    recipient_user_account_id: doc.recipientUserAccountId,
+    appointment_id: doc.appointmentId ?? null,
+    type: doc.type,
+    title: doc.title,
+    message: doc.message,
+    is_read: toLegacyBoolean(doc.isRead),
+    read_at: doc.readAt ?? null,
+    created_at: doc.createdAt ?? null,
+  };
+}

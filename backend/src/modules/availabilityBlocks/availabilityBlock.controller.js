@@ -5,9 +5,9 @@ import {
   removeAvailabilityBlock,
 } from './availabilityBlock.service.js';
 
-export function createAvailabilityBlockController(req, res, next) {
+export async function createAvailabilityBlockController(req, res, next) {
   try {
-    const result = createAvailabilityBlock(
+    const result = await createAvailabilityBlock(
       req.user.organizationId,
       req.params.professionalId,
       req.body
@@ -18,18 +18,18 @@ export function createAvailabilityBlockController(req, res, next) {
   }
 }
 
-export function listAvailabilityBlocksController(req, res, next) {
+export async function listAvailabilityBlocksController(req, res, next) {
   try {
-    const blocks = listAvailabilityBlocks(req.user.organizationId, req.params.professionalId);
+    const blocks = await listAvailabilityBlocks(req.user.organizationId, req.params.professionalId);
     res.status(200).json({ blocks });
   } catch (error) {
     next(error);
   }
 }
 
-export function patchAvailabilityBlockController(req, res, next) {
+export async function patchAvailabilityBlockController(req, res, next) {
   try {
-    const result = patchAvailabilityBlock(
+    const result = await patchAvailabilityBlock(
       req.user.organizationId,
       req.params.professionalId,
       req.params.blockId,
@@ -41,9 +41,9 @@ export function patchAvailabilityBlockController(req, res, next) {
   }
 }
 
-export function deleteAvailabilityBlockController(req, res, next) {
+export async function deleteAvailabilityBlockController(req, res, next) {
   try {
-    removeAvailabilityBlock(
+    await removeAvailabilityBlock(
       req.user.organizationId,
       req.params.professionalId,
       req.params.blockId

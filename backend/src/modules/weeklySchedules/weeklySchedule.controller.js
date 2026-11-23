@@ -5,9 +5,9 @@ import {
   removeWeeklySchedule,
 } from './weeklySchedule.service.js';
 
-export function createWeeklyScheduleController(req, res, next) {
+export async function createWeeklyScheduleController(req, res, next) {
   try {
-    const result = createWeeklySchedule(
+    const result = await createWeeklySchedule(
       req.user.organizationId,
       req.params.professionalId,
       req.body
@@ -18,18 +18,18 @@ export function createWeeklyScheduleController(req, res, next) {
   }
 }
 
-export function listWeeklySchedulesController(req, res, next) {
+export async function listWeeklySchedulesController(req, res, next) {
   try {
-    const schedules = listWeeklySchedules(req.user.organizationId, req.params.professionalId);
+    const schedules = await listWeeklySchedules(req.user.organizationId, req.params.professionalId);
     res.status(200).json({ schedules });
   } catch (error) {
     next(error);
   }
 }
 
-export function patchWeeklyScheduleController(req, res, next) {
+export async function patchWeeklyScheduleController(req, res, next) {
   try {
-    const result = patchWeeklySchedule(
+    const result = await patchWeeklySchedule(
       req.user.organizationId,
       req.params.professionalId,
       req.params.scheduleId,
@@ -41,9 +41,9 @@ export function patchWeeklyScheduleController(req, res, next) {
   }
 }
 
-export function deleteWeeklyScheduleController(req, res, next) {
+export async function deleteWeeklyScheduleController(req, res, next) {
   try {
-    removeWeeklySchedule(
+    await removeWeeklySchedule(
       req.user.organizationId,
       req.params.professionalId,
       req.params.scheduleId

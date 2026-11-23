@@ -58,21 +58,25 @@ function toAppointmentCounts(rows) {
   };
 }
 
-export function getDashboard(organizationId, query) {
+export async function getDashboard(organizationId, query) {
   const date = parseDashboardDate(query?.date);
   const rangeStart = `${date}T00:00`;
   const rangeEnd = `${nextDay(date)}T00:00`;
 
+  const statusRows = await countAppointmentsByStatusInRange(organizationId, rangeStart, rangeEnd);
+  const clients = await countActiveClients(organizationId);
+  const professionals = await countActiveProfessionals(organizationId);
+  const services = await countActiveServices(organizationId);
+  const todayRows = await findByFilters(organizationId, { rangeStart, rangeEnd });
+
   return {
     date,
-    appointments: toAppointmentCounts(
-      countAppointmentsByStatusInRange(organizationId, rangeStart, rangeEnd)
-    ),
+    appointments: toAppointmentCounts(statusRows),
     activeResources: {
-      clients: countActiveClients(organizationId),
-      professionals: countActiveProfessionals(organizationId),
-      services: countActiveServices(organizationId),
+      clients,
+      professionals,
+      services,
     },
-    today: findByFilters(organizationId, { rangeStart, rangeEnd }).map(toAppointmentResponse),
+    today: todayRows.map(toAppointmentResponse),
   };
 }

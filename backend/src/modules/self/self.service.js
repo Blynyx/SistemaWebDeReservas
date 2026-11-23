@@ -38,25 +38,25 @@ export function getMyClient(client) {
   };
 }
 
-export function listMyProfessionalAppointments(organizationId, professionalId, query) {
+export async function listMyProfessionalAppointments(organizationId, professionalId, query) {
   return listAppointmentsByProfessional(organizationId, professionalId, query);
 }
 
-export function listMyClientAppointments(organizationId, clientId, query) {
+export async function listMyClientAppointments(organizationId, clientId, query) {
   return listAppointmentsByClient(organizationId, clientId, query);
 }
 
-export function createMyAppointment(organizationId, clientId, body) {
+export async function createMyAppointment(organizationId, clientId, body) {
   return createOwnAppointment(organizationId, clientId, body);
 }
 
-export function cancelMyAppointment(organizationId, clientId, appointmentId) {
+export async function cancelMyAppointment(organizationId, clientId, appointmentId) {
   return cancelAppointment(organizationId, appointmentId, {
     expectedClientId: clientId,
   });
 }
 
-export function rescheduleMyAppointment(organizationId, clientId, appointmentId, body) {
+export async function rescheduleMyAppointment(organizationId, clientId, appointmentId, body) {
   return rescheduleAppointment(
     organizationId,
     appointmentId,
@@ -65,30 +65,30 @@ export function rescheduleMyAppointment(organizationId, clientId, appointmentId,
   );
 }
 
-export function completeMyAppointment(organizationId, professionalId, appointmentId) {
+export async function completeMyAppointment(organizationId, professionalId, appointmentId) {
   return completeAppointment(organizationId, appointmentId, {
     expectedProfessionalId: professionalId,
   });
 }
 
-export function markMyAppointmentNoShow(organizationId, professionalId, appointmentId) {
+export async function markMyAppointmentNoShow(organizationId, professionalId, appointmentId) {
   return markNoShowAppointment(organizationId, appointmentId, {
     expectedProfessionalId: professionalId,
   });
 }
 
-export function createMyAvailabilityBlock(organizationId, professionalId, body) {
+export async function createMyAvailabilityBlock(organizationId, professionalId, body) {
   return createAvailabilityBlock(organizationId, professionalId, body);
 }
 
-export function listMyAvailabilityBlocks(organizationId, professionalId) {
+export async function listMyAvailabilityBlocks(organizationId, professionalId) {
   return listAvailabilityBlocks(organizationId, professionalId);
 }
 
-export function patchMyAvailabilityBlock(organizationId, professionalId, blockId, body) {
+export async function patchMyAvailabilityBlock(organizationId, professionalId, blockId, body) {
   return patchAvailabilityBlock(organizationId, professionalId, blockId, body);
 }
 
-export function removeMyAvailabilityBlock(organizationId, professionalId, blockId) {
-  removeAvailabilityBlock(organizationId, professionalId, blockId);
+export async function removeMyAvailabilityBlock(organizationId, professionalId, blockId) {
+  await removeAvailabilityBlock(organizationId, professionalId, blockId);
 }

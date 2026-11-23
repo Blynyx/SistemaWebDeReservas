@@ -4,9 +4,9 @@ import {
   unassignServiceFromProfessional,
 } from './professionalService.service.js';
 
-export function assignServiceController(req, res, next) {
+export async function assignServiceController(req, res, next) {
   try {
-    const result = assignServiceToProfessional(
+    const result = await assignServiceToProfessional(
       req.user.organizationId,
       req.params.professionalId,
       req.body
@@ -17,18 +17,18 @@ export function assignServiceController(req, res, next) {
   }
 }
 
-export function listAssignedServicesController(req, res, next) {
+export async function listAssignedServicesController(req, res, next) {
   try {
-    const services = listAssignedServices(req.user.organizationId, req.params.professionalId);
+    const services = await listAssignedServices(req.user.organizationId, req.params.professionalId);
     res.status(200).json({ services });
   } catch (error) {
     next(error);
   }
 }
 
-export function unassignServiceController(req, res, next) {
+export async function unassignServiceController(req, res, next) {
   try {
-    unassignServiceFromProfessional(
+    await unassignServiceFromProfessional(
       req.user.organizationId,
       req.params.professionalId,
       req.params.serviceId
