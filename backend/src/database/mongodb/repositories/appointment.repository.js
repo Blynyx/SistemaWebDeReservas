@@ -243,3 +243,34 @@ export async function reschedule(
     { session }
   );
 }
+
+export async function updateBookingDetails(
+  organizationId,
+  appointmentId,
+  {
+    clientId,
+    professionalId,
+    serviceId,
+    endAt,
+    serviceDurationMinutes,
+    servicePriceMinorUnits,
+  },
+  { session } = {}
+) {
+  requireOrganizationId(organizationId);
+  await collection().updateOne(
+    { organizationId, id: appointmentId },
+    {
+      $set: {
+        clientId,
+        professionalId,
+        serviceId,
+        endAt,
+        serviceDurationMinutes,
+        servicePriceMinorUnits,
+        updatedAt: new Date().toISOString(),
+      },
+    },
+    { session }
+  );
+}

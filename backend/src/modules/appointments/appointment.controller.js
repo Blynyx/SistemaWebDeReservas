@@ -7,6 +7,7 @@ import {
   listAppointments,
   markNoShowAppointment,
   rescheduleAppointment,
+  updateAppointment,
 } from './appointment.service.js';
 
 export async function createAppointmentController(req, res, next) {
@@ -75,6 +76,15 @@ export async function completeAppointmentController(req, res, next) {
 export async function markNoShowAppointmentController(req, res, next) {
   try {
     const result = await markNoShowAppointment(req.user.organizationId, req.params.id);
+    res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateAppointmentController(req, res, next) {
+  try {
+    const result = await updateAppointment(req.user.organizationId, req.params.id, req.body);
     res.status(200).json(result);
   } catch (error) {
     next(error);

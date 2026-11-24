@@ -15,7 +15,13 @@
   align-items: end;
 }
 
+.appointments-results {
+  min-width: 0;
+  max-width: 100%;
+}
+
 .table-wrap {
+  max-width: 100%;
   overflow-x: auto;
 }
 

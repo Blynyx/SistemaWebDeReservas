@@ -10,6 +10,7 @@ import {
   listAppointmentsController,
   markNoShowAppointmentController,
   rescheduleAppointmentController,
+  updateAppointmentController,
 } from './appointment.controller.js';
 
 const router = Router();
@@ -22,6 +23,7 @@ router.patch('/:id/cancel', authMiddleware, staffRoles, cancelAppointmentControl
 router.patch('/:id/reschedule', authMiddleware, staffRoles, rescheduleAppointmentController);
 router.patch('/:id/complete', authMiddleware, staffRoles, completeAppointmentController);
 router.patch('/:id/no-show', authMiddleware, staffRoles, markNoShowAppointmentController);
+router.patch('/:id', authMiddleware, staffRoles, updateAppointmentController);
 router.get('/:id', authMiddleware, staffRoles, getAppointmentController);
 
 export default router;

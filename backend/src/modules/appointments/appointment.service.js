@@ -35,6 +35,7 @@ import {
   hasActiveOverlap,
   insertAppointment,
   reschedule as updateAppointmentSchedule,
+  updateBookingDetails,
   updateStatus,
 } from './appointment.repository.js';
 
@@ -545,6 +546,161 @@ export async function rescheduleAppointment(organizationId, appointmentId, body,
         appointment: updated,
         eventType: 'RESCHEDULED',
         previousStartAt,
+      },
+      { session }
+    );
+
+    return toAppointmentResponse(updated);
+  });
+}
+
+const ALLOWED_UPDATE_FIELDS = new Set(['clientId', 'professionalId', 'serviceId']);
+
+function parseUpdateAppointmentBody(body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    throw httpError(400, 'Debe enviar al menos un campo modificable (clientId, professionalId o serviceId)');
+  }
+
+  const keys = Object.keys(body);
+
+  if (keys.length === 0) {
+    throw httpError(400, 'Debe enviar al menos un campo modificable (clientId, professionalId o serviceId)');
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, 'startAt')) {
+    throw httpError(400, 'Para cambiar el horario utiliza la operación de reprogramación');
+  }
+
+  for (const key of keys) {
+    if (!ALLOWED_UPDATE_FIELDS.has(key)) {
+      throw httpError(400, `El campo ${key} no se puede modificar en esta operación`);
+    }
+  }
+
+  const parsed = {};
+  if (body.clientId !== undefined) {
+    parsed.clientId = parseRequiredId(body.clientId, 'clientId');
+  }
+  if (body.professionalId !== undefined) {
+    parsed.professionalId = parseRequiredId(body.professionalId, 'professionalId');
+  }
+  if (body.serviceId !== undefined) {
+    parsed.serviceId = parseRequiredId(body.serviceId, 'serviceId');
+  }
+
+  if (Object.keys(parsed).length === 0) {
+    throw httpError(400, 'Debe enviar al menos un campo modificable (clientId, professionalId o serviceId)');
+  }
+
+  return parsed;
+}
+
+export async function updateAppointment(organizationId, appointmentId, body) {
+  const patch = parseUpdateAppointmentBody(body);
+
+  return withDayLockTransaction(async (session) => {
+    const initial = await requireTenantAppointment(organizationId, appointmentId, { session });
+
+    const targetProfessionalId = patch.professionalId ?? initial.professional_id;
+    const lockDate = extractLockDate(initial.start_at);
+
+    await acquireProfessionalDayLock(
+      {
+        organizationId,
+        professionalId: targetProfessionalId,
+        date: lockDate,
+      },
+      { session }
+    );
+
+    const appointment = await requireTenantAppointment(organizationId, appointmentId, { session });
+
+    if (!ACTIVE_STATUSES.includes(appointment.status)) {
+      throw httpError(409, 'La cita no se puede modificar en su estado actual');
+    }
+
+    const nextClientId = patch.clientId ?? appointment.client_id;
+    const nextProfessionalId = patch.professionalId ?? appointment.professional_id;
+    const nextServiceId = patch.serviceId ?? appointment.service_id;
+
+    const clientChanged = nextClientId !== appointment.client_id;
+    const professionalChanged = nextProfessionalId !== appointment.professional_id;
+    const serviceChanged = nextServiceId !== appointment.service_id;
+
+    if (!clientChanged && !professionalChanged && !serviceChanged) {
+      return toAppointmentResponse(appointment);
+    }
+
+    const client = requireActiveResource(
+      await findClientById(organizationId, nextClientId, { session }),
+      'Cliente no encontrado',
+      'El cliente no está activo'
+    );
+    const professional = requireActiveResource(
+      await findProfessionalById(organizationId, nextProfessionalId, { session }),
+      'Profesional no encontrado',
+      'El profesional no está activo'
+    );
+    const service = requireActiveResource(
+      await findServiceById(organizationId, nextServiceId, { session }),
+      'Servicio no encontrado',
+      'El servicio no está activo'
+    );
+
+    if (!(await assignmentExists(organizationId, professional.id, service.id, { session }))) {
+      throw httpError(409, 'El profesional no está habilitado para este servicio');
+    }
+
+    const nextDurationMinutes = serviceChanged
+      ? service.duration_minutes
+      : appointment.service_duration_minutes;
+    const nextPriceMinorUnits = serviceChanged
+      ? service.price_minor_units
+      : appointment.service_price_minor_units;
+    const nextEndAt = serviceChanged
+      ? addMinutes(appointment.start_at, nextDurationMinutes)
+      : appointment.end_at;
+
+    if (!nextEndAt) {
+      throw httpError(400, 'No se pudo calcular el horario de fin de la cita');
+    }
+
+    if (professionalChanged || serviceChanged) {
+      await assertSlotAvailable(
+        {
+          organizationId,
+          professionalId: professional.id,
+          startAt: appointment.start_at,
+          endAt: nextEndAt,
+          excludeAppointmentId: appointment.id,
+        },
+        { session }
+      );
+    }
+
+    await updateBookingDetails(
+      organizationId,
+      appointmentId,
+      {
+        clientId: client.id,
+        professionalId: professional.id,
+        serviceId: service.id,
+        endAt: nextEndAt,
+        serviceDurationMinutes: nextDurationMinutes,
+        servicePriceMinorUnits: nextPriceMinorUnits,
+      },
+      { session }
+    );
+
+    const updated = await findById(organizationId, appointmentId, { session });
+
+    await createAppointmentEventNotifications(
+      {
+        organizationId,
+        appointment: updated,
+        eventType: 'UPDATED',
+        previousClientId: clientChanged ? appointment.client_id : null,
+        previousProfessionalId: professionalChanged ? appointment.professional_id : null,
       },
       { session }
     );

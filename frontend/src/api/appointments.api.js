@@ -47,3 +47,21 @@ export function completeAppointment(id) {
 export function markNoShowAppointment(id) {
   return apiRequest(`/appointments/${id}/no-show`, { method: 'PATCH' });
 }
+
+export function updateAppointment(id, { clientId, professionalId, serviceId }) {
+  const body = {};
+  if (clientId !== undefined) {
+    body.clientId = clientId;
+  }
+  if (professionalId !== undefined) {
+    body.professionalId = professionalId;
+  }
+  if (serviceId !== undefined) {
+    body.serviceId = serviceId;
+  }
+
+  return apiRequest(`/appointments/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body,
+  });
+}

@@ -87,6 +87,8 @@ export async function createAppointmentEventNotifications(
     appointment,
     eventType,
     previousStartAt = null,
+    previousClientId = null,
+    previousProfessionalId = null,
   },
   { session } = {}
 ) {
@@ -188,6 +190,66 @@ export async function createAppointmentEventNotifications(
       },
       { session }
     );
+    return;
+  }
+
+  if (eventType === 'UPDATED') {
+    await notifyRecipient(
+      {
+        organizationId,
+        recipientUserAccountId: client?.user_account_id,
+        appointmentId: appointment.id,
+        type: 'APPOINTMENT_UPDATED',
+        title: 'Cita actualizada',
+        message: `La cita del ${startAt} fue actualizada.`,
+      },
+      { session }
+    );
+    await notifyRecipient(
+      {
+        organizationId,
+        recipientUserAccountId: professional?.user_account_id,
+        appointmentId: appointment.id,
+        type: 'APPOINTMENT_UPDATED',
+        title: 'Cita actualizada',
+        message: `La cita del ${startAt} fue actualizada.`,
+      },
+      { session }
+    );
+
+    if (previousClientId && previousClientId !== appointment.client_id) {
+      const previousClient = await findClientById(organizationId, previousClientId, { session });
+      await notifyRecipient(
+        {
+          organizationId,
+          recipientUserAccountId: previousClient?.user_account_id,
+          appointmentId: appointment.id,
+          type: 'APPOINTMENT_REASSIGNED',
+          title: 'Cita reasignada',
+          message: `La cita del ${startAt} fue reasignada.`,
+        },
+        { session }
+      );
+    }
+
+    if (previousProfessionalId && previousProfessionalId !== appointment.professional_id) {
+      const previousProfessional = await findProfessionalById(
+        organizationId,
+        previousProfessionalId,
+        { session }
+      );
+      await notifyRecipient(
+        {
+          organizationId,
+          recipientUserAccountId: previousProfessional?.user_account_id,
+          appointmentId: appointment.id,
+          type: 'APPOINTMENT_REASSIGNED',
+          title: 'Cita reasignada',
+          message: `La cita del ${startAt} fue reasignada.`,
+        },
+        { session }
+      );
+    }
   }
 }
 

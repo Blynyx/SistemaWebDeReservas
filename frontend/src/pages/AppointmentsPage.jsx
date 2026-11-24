@@ -11,6 +11,7 @@ import { listClients } from '../api/clients.api.js';
 import { listProfessionals } from '../api/professionals.api.js';
 import { listServices } from '../api/services.api.js';
 import { StaffAppointmentBookingDialog } from '../components/StaffAppointmentBookingDialog.jsx';
+import { StaffAppointmentEditDialog } from '../components/StaffAppointmentEditDialog.jsx';
 import { StatusBadge } from '../components/StatusBadge.jsx';
 import { getSafeErrorMessage } from '../utils/apiMessages.js';
 import { getAppointmentActions, STATUS_LABELS } from '../utils/appointmentStatus.js';
@@ -72,6 +73,7 @@ export function AppointmentsPage() {
   const [error, setError] = useState('');
   const [busyRowId, setBusyRowId] = useState(null);
   const [bookingOpen, setBookingOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
 
   const requestIdRef = useRef(0);
@@ -408,6 +410,21 @@ export function AppointmentsPage() {
                       </td>
                       <td>{appointment.serviceDurationMinutes} min</td>
                       <td className="data-table__actions">
+                        {(appointment.status === 'PROGRAMADA' ||
+                          appointment.status === 'CONFIRMADA') && (
+                          <button
+                            type="button"
+                            disabled={isRowBusy}
+                            className="button button--small"
+                            onClick={() => {
+                              setFeedback('');
+                              setError('');
+                              setEditTarget(appointment);
+                            }}
+                          >
+                            Editar
+                          </button>
+                        )}
                         {getAppointmentActions(appointment.status).map((action) => (
                           <button
                             key={action}
@@ -432,6 +449,19 @@ export function AppointmentsPage() {
           </div>
         )}
       </div>
+
+      <StaffAppointmentEditDialog
+        appointment={editTarget}
+        clients={clients}
+        professionals={professionals}
+        services={services}
+        onClose={() => setEditTarget(null)}
+        onUpdated={async () => {
+          setEditTarget(null);
+          setFeedback('Cita actualizada correctamente.');
+          await loadAppointments(currentFilters, { keepFeedback: true });
+        }}
+      />
 
       <StaffRescheduleDialog
         appointment={rescheduleTarget}
