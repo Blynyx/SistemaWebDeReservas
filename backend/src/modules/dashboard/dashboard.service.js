@@ -12,6 +12,8 @@ import {
   countActiveProfessionals,
   countActiveServices,
   countAppointmentsByStatusInRange,
+  findFrequentClientsInRange,
+  findTopServicesInRange,
 } from './dashboard.repository.js';
 
 const EMPTY_STATUS_COUNTS = {
@@ -63,11 +65,16 @@ export async function getDashboard(organizationId, query) {
   const rangeStart = `${date}T00:00`;
   const rangeEnd = `${nextDay(date)}T00:00`;
 
-  const statusRows = await countAppointmentsByStatusInRange(organizationId, rangeStart, rangeEnd);
-  const clients = await countActiveClients(organizationId);
-  const professionals = await countActiveProfessionals(organizationId);
-  const services = await countActiveServices(organizationId);
-  const todayRows = await findByFilters(organizationId, { rangeStart, rangeEnd });
+  const [statusRows, clients, professionals, services, topServices, frequentClients, todayRows] =
+    await Promise.all([
+      countAppointmentsByStatusInRange(organizationId, rangeStart, rangeEnd),
+      countActiveClients(organizationId),
+      countActiveProfessionals(organizationId),
+      countActiveServices(organizationId),
+      findTopServicesInRange(organizationId, rangeStart, rangeEnd, { limit: 5 }),
+      findFrequentClientsInRange(organizationId, rangeStart, rangeEnd, { limit: 5 }),
+      findByFilters(organizationId, { rangeStart, rangeEnd }),
+    ]);
 
   return {
     date,
@@ -77,6 +84,8 @@ export async function getDashboard(organizationId, query) {
       professionals,
       services,
     },
+    topServices,
+    frequentClients,
     today: todayRows.map(toAppointmentResponse),
   };
 }

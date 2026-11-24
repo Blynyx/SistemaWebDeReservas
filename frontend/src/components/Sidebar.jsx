@@ -7,6 +7,7 @@ const NAV_BY_ROLE = {
     { to: '/clientes', label: 'Clientes' },
     { to: '/profesionales', label: 'Profesionales' },
     { to: '/servicios', label: 'Servicios' },
+    { to: '/recepcionistas', label: 'Recepcionistas' },
   ],
   RECEPTIONIST: [
     { to: '/dashboard', label: 'Dashboard' },

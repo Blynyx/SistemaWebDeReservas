@@ -74,3 +74,58 @@ export async function deactivate(organizationId, userAccountId, { session } = {}
     { session }
   );
 }
+
+export async function findReceptionistsByOrganization(organizationId, { session } = {}) {
+  requireOrganizationId(organizationId);
+  return collection()
+    .find(
+      { organizationId, role: 'RECEPTIONIST' },
+      {
+        projection: {
+          _id: 0,
+          id: 1,
+          email: 1,
+          role: 1,
+          isActive: 1,
+          createdAt: 1,
+          updatedAt: 1,
+        },
+        session,
+      }
+    )
+    .sort({ email: 1 })
+    .toArray();
+}
+
+export async function findByIdAndRole(organizationId, id, role, { session } = {}) {
+  requireOrganizationId(organizationId);
+  return collection().findOne(
+    { organizationId, id, role },
+    {
+      projection: {
+        _id: 0,
+        id: 1,
+        email: 1,
+        role: 1,
+        isActive: 1,
+        createdAt: 1,
+        updatedAt: 1,
+      },
+      session,
+    }
+  );
+}
+
+export async function setActiveState(organizationId, id, isActive, { session } = {}) {
+  requireOrganizationId(organizationId);
+  await collection().updateOne(
+    { organizationId, id },
+    {
+      $set: {
+        isActive: Boolean(isActive),
+        updatedAt: new Date().toISOString(),
+      },
+    },
+    { session }
+  );
+}

@@ -12,6 +12,7 @@ import { NotificationsPage } from './pages/NotificationsPage.jsx';
 import { ProfessionalAgendaPage } from './pages/ProfessionalAgendaPage.jsx';
 import { ProfessionalBlocksPage } from './pages/ProfessionalBlocksPage.jsx';
 import { ProfessionalsPage } from './pages/ProfessionalsPage.jsx';
+import { ReceptionistsPage } from './pages/ReceptionistsPage.jsx';
 import { ServicesPage } from './pages/ServicesPage.jsx';
 import { ProtectedRoute } from './router/ProtectedRoute.jsx';
 import { getRoleHomePath, PROTECTED_ROUTES } from './router/routes.js';
@@ -73,6 +74,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={PROTECTED_ROUTES['/profesionales']}>
             <ProfessionalsPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/recepcionistas"
+        element={
+          <ProtectedRoute allowedRoles={PROTECTED_ROUTES['/recepcionistas']}>
+            <ReceptionistsPage />
           </ProtectedRoute>
         }
       />

@@ -4,6 +4,7 @@ import { getDashboard } from '../api/dashboard.api.js';
 import { listProfessionals } from '../api/professionals.api.js';
 import { listServices } from '../api/services.api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { DashboardCharts } from '../components/DashboardCharts.jsx';
 import { StatusBadge } from '../components/StatusBadge.jsx';
 import { getSafeErrorMessage } from '../utils/apiMessages.js';
 import { formatLocalTime } from '../utils/dateTime.js';
@@ -148,6 +149,13 @@ export function DashboardPage() {
                 value={dashboard.activeResources.services}
               />
             </section>
+
+            <DashboardCharts
+              appointments={dashboard.appointments}
+              topServices={dashboard.topServices}
+              frequentClients={dashboard.frequentClients}
+              names={names}
+            />
 
             <section className="today-section">
               <h2>Citas de la fecha</h2>

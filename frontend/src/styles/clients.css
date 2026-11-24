@@ -4,6 +4,16 @@
   gap: 0.6rem;
 }
 
+.clients-results {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.clients-results .table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
 .client-status-badge--active {
   background: #e4eddf;
   color: #35552c;

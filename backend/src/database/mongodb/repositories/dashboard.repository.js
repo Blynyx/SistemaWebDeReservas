@@ -58,3 +58,95 @@ export async function countActiveServices(organizationId, { session } = {}) {
     .collection('services')
     .countDocuments({ organizationId, isActive: true }, { session });
 }
+
+export async function findTopServicesInRange(
+  organizationId,
+  rangeStart,
+  rangeEnd,
+  { limit = 5, session } = {}
+) {
+  requireOrganizationId(organizationId);
+  return getMongoDb()
+    .collection('appointments')
+    .aggregate(
+      [
+        {
+          $match: {
+            organizationId,
+            startAt: { $lt: rangeEnd },
+            endAt: { $gt: rangeStart },
+          },
+        },
+        {
+          $group: {
+            _id: '$serviceId',
+            total: { $sum: 1 },
+          },
+        },
+        {
+          $sort: {
+            total: -1,
+            _id: 1,
+          },
+        },
+        {
+          $limit: limit,
+        },
+        {
+          $project: {
+            _id: 0,
+            serviceId: '$_id',
+            total: 1,
+          },
+        },
+      ],
+      { session }
+    )
+    .toArray();
+}
+
+export async function findFrequentClientsInRange(
+  organizationId,
+  rangeStart,
+  rangeEnd,
+  { limit = 5, session } = {}
+) {
+  requireOrganizationId(organizationId);
+  return getMongoDb()
+    .collection('appointments')
+    .aggregate(
+      [
+        {
+          $match: {
+            organizationId,
+            startAt: { $lt: rangeEnd },
+            endAt: { $gt: rangeStart },
+          },
+        },
+        {
+          $group: {
+            _id: '$clientId',
+            total: { $sum: 1 },
+          },
+        },
+        {
+          $sort: {
+            total: -1,
+            _id: 1,
+          },
+        },
+        {
+          $limit: limit,
+        },
+        {
+          $project: {
+            _id: 0,
+            clientId: '$_id',
+            total: 1,
+          },
+        },
+      ],
+      { session }
+    )
+    .toArray();
+}
