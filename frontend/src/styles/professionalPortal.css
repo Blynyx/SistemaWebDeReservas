@@ -1,0 +1,174 @@
+.professional-portal {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pro-blocks-results {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pro-blocks-results .table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.professional-portal .pro-agenda-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.pro-agenda-toolbar .form-field {
+  min-width: 12rem;
+}
+
+.pro-agenda-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+}
+
+.pro-legend-swatch {
+  display: inline-block;
+  width: 0.9rem;
+  height: 0.9rem;
+  margin-right: 0.4rem;
+  vertical-align: middle;
+  border: 1px dashed #64748b;
+}
+
+.pro-calendar-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  background: #fff;
+}
+
+.pro-calendar-wrap > * {
+  min-width: 0;
+}
+
+.pro-event--block {
+  background: repeating-linear-gradient(
+    135deg,
+    #e2e8f0,
+    #e2e8f0 6px,
+    #cbd5e1 6px,
+    #cbd5e1 12px
+  );
+}
+
+.pro-event--PROGRAMADA {
+  border-left: 4px solid #1d4ed8;
+}
+
+.pro-event--CONFIRMADA {
+  border-left: 4px solid #0f766e;
+}
+
+.pro-event--COMPLETADA {
+  border-left: 4px solid #166534;
+}
+
+.pro-event--NO_ASISTIO {
+  border-left: 4px solid #b45309;
+}
+
+.pro-event--CANCELADA {
+  border-left: 4px dashed #6b7280;
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.pro-appointment-dialog {
+  max-width: min(32rem, 94vw);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.pro-appointment-dialog__details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.75rem 1rem;
+  margin: 1rem 0;
+}
+
+.pro-appointment-dialog__details dt {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.pro-appointment-dialog__details dd {
+  margin: 0.2rem 0 0;
+}
+
+.pro-appointment-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.pro-block-form {
+  display: grid;
+  gap: 0.75rem;
+  max-width: 48rem;
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  background: var(--surface);
+}
+
+.pro-block-form__fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.75rem;
+}
+
+.pro-block-form__reason {
+  grid-column: 1 / -1;
+}
+
+.pro-block-form__reason textarea {
+  width: 100%;
+  min-height: 4.5rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.55rem;
+  font: inherit;
+}
+
+.pro-block-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .professional-portal .fc-toolbar,
+  .professional-portal [class*='toolbar'] {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .pro-calendar-wrap {
+    padding: 0.25rem;
+  }
+
+  .pro-appointment-dialog__actions .button {
+    width: 100%;
+  }
+}

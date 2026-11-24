@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAuth } from '../auth/AuthContext.jsx';
 import { getMyNotifications, setNotificationReadState } from '../api/notifications.api.js';
 import { NotificationList } from '../components/NotificationList.jsx';
 import { getSafeErrorMessage } from '../utils/apiMessages.js';
@@ -9,7 +10,15 @@ const FILTERS = [
   { key: 'read', label: 'Leídas' },
 ];
 
+const COPY_BY_ROLE = {
+  CLIENT: 'Avisos generados automáticamente sobre el estado de tus citas.',
+  PROFESSIONAL:
+    'Avisos generados automáticamente sobre las citas asignadas a tu agenda.',
+};
+
 export function NotificationsPage() {
+  const { session } = useAuth();
+  const leadText = COPY_BY_ROLE[session?.user?.role] ?? COPY_BY_ROLE.CLIENT;
   const [currentFilter, setCurrentFilter] = useState('all');
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -77,9 +86,7 @@ export function NotificationsPage() {
       <div className="client-portal__header">
         <div>
           <h1>Notificaciones</h1>
-          <p className="staff-page__lead">
-            Avisos generados automáticamente sobre el estado de tus citas.
-          </p>
+          <p className="staff-page__lead">{leadText}</p>
         </div>
         <span className="client-unread-badge" aria-live="polite">
           No leídas: {unreadCount}

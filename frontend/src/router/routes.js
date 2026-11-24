@@ -26,9 +26,10 @@ export const PROTECTED_ROUTES = {
   '/servicios': ['ADMIN'],
   '/profesionales': ['ADMIN'],
   '/agenda': ['PROFESSIONAL'],
+  '/mis-bloqueos': ['PROFESSIONAL'],
   '/mis-citas': ['CLIENT'],
   '/reservar': ['CLIENT'],
-  '/notificaciones': ['CLIENT'],
+  '/notificaciones': ['CLIENT', 'PROFESSIONAL'],
 };
 
 export function getRoleHome(role) {

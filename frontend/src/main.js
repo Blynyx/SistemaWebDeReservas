@@ -9,6 +9,7 @@ import './styles/services.css';
 import './styles/professionals.css';
 import './styles/professionalConfiguration.css';
 import './styles/clientPortal.css';
+import './styles/professionalPortal.css';
 import { createElement } from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App.jsx';

@@ -10,6 +10,7 @@ import { LoginPage } from './pages/LoginPage.jsx';
 import { NotFoundPage } from './pages/NotFoundPage.jsx';
 import { NotificationsPage } from './pages/NotificationsPage.jsx';
 import { ProfessionalAgendaPage } from './pages/ProfessionalAgendaPage.jsx';
+import { ProfessionalBlocksPage } from './pages/ProfessionalBlocksPage.jsx';
 import { ProfessionalsPage } from './pages/ProfessionalsPage.jsx';
 import { ServicesPage } from './pages/ServicesPage.jsx';
 import { ProtectedRoute } from './router/ProtectedRoute.jsx';
@@ -80,6 +81,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={PROTECTED_ROUTES['/agenda']}>
             <ProfessionalAgendaPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mis-bloqueos"
+        element={
+          <ProtectedRoute allowedRoles={PROTECTED_ROUTES['/mis-bloqueos']}>
+            <ProfessionalBlocksPage />
           </ProtectedRoute>
         }
       />

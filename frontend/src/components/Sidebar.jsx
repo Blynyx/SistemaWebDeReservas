@@ -15,8 +15,8 @@ const NAV_BY_ROLE = {
   ],
   PROFESSIONAL: [
     { to: '/agenda', label: 'Mi agenda' },
-    { label: 'Mis bloqueos' },
-    { label: 'Notificaciones' },
+    { to: '/mis-bloqueos', label: 'Mis bloqueos' },
+    { to: '/notificaciones', label: 'Notificaciones' },
   ],
   CLIENT: [
     { to: '/mis-citas', label: 'Mis citas' },

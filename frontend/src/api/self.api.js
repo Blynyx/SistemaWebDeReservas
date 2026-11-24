@@ -1,5 +1,60 @@
 import { apiRequest } from './apiClient.js';
 
+export function getMyProfessional() {
+  return apiRequest('/me/professional');
+}
+
+export function getMyProfessionalAppointments(filters = {}) {
+  const params = new URLSearchParams();
+
+  // El backend self PROFESSIONAL solo soporta el rango from/to.
+  if (filters.from && filters.to) {
+    params.set('from', filters.from);
+    params.set('to', filters.to);
+  }
+
+  const query = params.toString();
+  return apiRequest(
+    query ? `/me/professional/appointments?${query}` : '/me/professional/appointments'
+  );
+}
+
+export function completeMyProfessionalAppointment(id) {
+  return apiRequest(`/me/professional/appointments/${encodeURIComponent(id)}/complete`, {
+    method: 'PATCH',
+  });
+}
+
+export function markMyProfessionalAppointmentNoShow(id) {
+  return apiRequest(`/me/professional/appointments/${encodeURIComponent(id)}/no-show`, {
+    method: 'PATCH',
+  });
+}
+
+export function getMyAvailabilityBlocks() {
+  return apiRequest('/me/professional/availability-blocks');
+}
+
+export function createMyAvailabilityBlock({ startAt, endAt, reason }) {
+  return apiRequest('/me/professional/availability-blocks', {
+    method: 'POST',
+    body: { startAt, endAt, reason: reason ?? null },
+  });
+}
+
+export function updateMyAvailabilityBlock(id, { startAt, endAt, reason }) {
+  return apiRequest(`/me/professional/availability-blocks/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: { startAt, endAt, reason: reason ?? null },
+  });
+}
+
+export function deleteMyAvailabilityBlock(id) {
+  return apiRequest(`/me/professional/availability-blocks/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+}
+
 export function getMyClient() {
   return apiRequest('/me/client');
 }
