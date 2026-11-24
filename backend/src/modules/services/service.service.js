@@ -95,8 +95,8 @@ export async function createService(organizationId, body) {
   return toServiceResponse(await findById(organizationId, id));
 }
 
-export async function listServices(organizationId) {
-  const services = await findAllByOrganization(organizationId);
+export async function listServices(organizationId, { activeOnly = false } = {}) {
+  const services = await findAllByOrganization(organizationId, { activeOnly });
   return services.map(toServiceResponse);
 }
 

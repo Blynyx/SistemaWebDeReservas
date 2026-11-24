@@ -241,4 +241,138 @@ describe('MongoDB Runtime API Regression (Etapa 26E)', () => {
       []
     );
   });
+
+  it('CLIENT GET /services devuelve solo servicios activos del tenant y bloquea POST/PATCH/DELETE con 403', async () => {
+    const onboardA = await (
+      await fetch(`${baseUrl}/api/v1/onboarding/organizations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationName: 'Org Client Portal A',
+          adminEmail: 'admin-cp-a@test.local',
+          adminPassword: 'Password123!',
+        }),
+      })
+    ).json();
+    const { token: adminTokenA } = await (
+      await fetch(`${baseUrl}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationSlug: onboardA.organization.slug,
+          email: 'admin-cp-a@test.local',
+          password: 'Password123!',
+        }),
+      })
+    ).json();
+    const adminHeadersA = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${adminTokenA}`,
+    };
+
+    const activeService = await (
+      await fetch(`${baseUrl}/api/v1/services`, {
+        method: 'POST',
+        headers: adminHeadersA,
+        body: JSON.stringify({ name: 'Servicio Activo A', durationMinutes: 30, priceMinorUnits: 2500 }),
+      })
+    ).json();
+    const inactiveService = await (
+      await fetch(`${baseUrl}/api/v1/services`, {
+        method: 'POST',
+        headers: adminHeadersA,
+        body: JSON.stringify({ name: 'Servicio Inactivo A', durationMinutes: 45, priceMinorUnits: 3500 }),
+      })
+    ).json();
+    await fetch(`${baseUrl}/api/v1/services/${inactiveService.id}`, {
+      method: 'DELETE',
+      headers: adminHeadersA,
+    });
+
+    // Servicio en otro tenant (ORG-B)
+    const onboardB = await (
+      await fetch(`${baseUrl}/api/v1/onboarding/organizations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationName: 'Org Client Portal B',
+          adminEmail: 'admin-cp-b@test.local',
+          adminPassword: 'Password123!',
+        }),
+      })
+    ).json();
+    const { token: adminTokenB } = await (
+      await fetch(`${baseUrl}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationSlug: onboardB.organization.slug,
+          email: 'admin-cp-b@test.local',
+          password: 'Password123!',
+        }),
+      })
+    ).json();
+    await fetch(`${baseUrl}/api/v1/services`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminTokenB}` },
+      body: JSON.stringify({ name: 'Servicio Activo B', durationMinutes: 60, priceMinorUnits: 4000 }),
+    });
+
+    // Crear y provisionar cuenta CLIENT en ORG-A
+    const client = await (
+      await fetch(`${baseUrl}/api/v1/clients`, {
+        method: 'POST',
+        headers: adminHeadersA,
+        body: JSON.stringify({ name: 'Cliente Portal', email: 'cliente-cp@test.local' }),
+      })
+    ).json();
+    await fetch(`${baseUrl}/api/v1/clients/${client.id}/account`, {
+      method: 'POST',
+      headers: adminHeadersA,
+      body: JSON.stringify({ email: 'cliente-cp@test.local', password: 'Password123!' }),
+    });
+    const { token: clientToken } = await (
+      await fetch(`${baseUrl}/api/v1/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organizationSlug: onboardA.organization.slug,
+          email: 'cliente-cp@test.local',
+          password: 'Password123!',
+        }),
+      })
+    ).json();
+    const clientHeaders = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${clientToken}`,
+    };
+
+    const getRes = await fetch(`${baseUrl}/api/v1/services`, { headers: clientHeaders });
+    assert.equal(getRes.status, 200);
+    const { services } = await getRes.json();
+    assert.equal(services.length, 1);
+    assert.equal(services[0].id, activeService.id);
+    assert.equal(services[0].name, 'Servicio Activo A');
+
+    // Operaciones administrativas sobre /services deben devolver 403 para CLIENT
+    const postRes = await fetch(`${baseUrl}/api/v1/services`, {
+      method: 'POST',
+      headers: clientHeaders,
+      body: JSON.stringify({ name: 'Intento', durationMinutes: 30, priceMinorUnits: 1000 }),
+    });
+    assert.equal(postRes.status, 403);
+
+    const patchRes = await fetch(`${baseUrl}/api/v1/services/${activeService.id}`, {
+      method: 'PATCH',
+      headers: clientHeaders,
+      body: JSON.stringify({ name: 'Hack' }),
+    });
+    assert.equal(patchRes.status, 403);
+
+    const deleteRes = await fetch(`${baseUrl}/api/v1/services/${activeService.id}`, {
+      method: 'DELETE',
+      headers: clientHeaders,
+    });
+    assert.equal(deleteRes.status, 403);
+  });
 });

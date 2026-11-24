@@ -39,10 +39,14 @@ export async function findById(organizationId, serviceId, { session } = {}) {
   return mapServiceToLegacy(doc);
 }
 
-export async function findAllByOrganization(organizationId, { session } = {}) {
+export async function findAllByOrganization(
+  organizationId,
+  { activeOnly = false, session } = {}
+) {
   requireOrganizationId(organizationId);
+  const filter = activeOnly ? { organizationId, isActive: true } : { organizationId };
   const docs = await collection()
-    .find({ organizationId }, { projection: { _id: 0 }, session })
+    .find(filter, { projection: { _id: 0 }, session })
     .sort({ name: 1 })
     .toArray();
   return docs.map(mapServiceToLegacy);

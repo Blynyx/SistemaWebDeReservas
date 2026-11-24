@@ -5,6 +5,13 @@ export const ROLE_HOME = {
   CLIENT: '#/mis-citas',
 };
 
+export const ROLE_HOME_PATH = {
+  ADMIN: '/dashboard',
+  RECEPTIONIST: '/dashboard',
+  PROFESSIONAL: '/agenda',
+  CLIENT: '/mis-citas',
+};
+
 export const ROLE_LABELS = {
   ADMIN: 'Administrador',
   RECEPTIONIST: 'Recepción',
@@ -20,10 +27,16 @@ export const PROTECTED_ROUTES = {
   '/profesionales': ['ADMIN'],
   '/agenda': ['PROFESSIONAL'],
   '/mis-citas': ['CLIENT'],
+  '/reservar': ['CLIENT'],
+  '/notificaciones': ['CLIENT'],
 };
 
 export function getRoleHome(role) {
   return ROLE_HOME[role] ?? '#/login';
+}
+
+export function getRoleHomePath(role) {
+  return ROLE_HOME_PATH[role] ?? '/login';
 }
 
 export function getRoleLabel(role) {

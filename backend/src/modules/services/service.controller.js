@@ -17,7 +17,9 @@ export async function createServiceController(req, res, next) {
 
 export async function listServicesController(req, res, next) {
   try {
-    const services = await listServices(req.user.organizationId);
+    const services = await listServices(req.user.organizationId, {
+      activeOnly: req.user.role === 'CLIENT',
+    });
     res.status(200).json({ services });
   } catch (error) {
     next(error);

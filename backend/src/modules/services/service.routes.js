@@ -15,7 +15,7 @@ router.post('/', authMiddleware, authorizeRoles('ADMIN'), createServiceControlle
 router.get(
   '/',
   authMiddleware,
-  authorizeRoles('ADMIN', 'RECEPTIONIST', 'PROFESSIONAL'),
+  authorizeRoles('ADMIN', 'RECEPTIONIST', 'PROFESSIONAL', 'CLIENT'),
   listServicesController
 );
 router.get(
