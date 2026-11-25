@@ -39,6 +39,24 @@ export async function findById(organizationId, clientId, { session } = {}) {
   return mapClientToLegacy(doc);
 }
 
+export async function findByIds(organizationId, clientIds, { session } = {}) {
+  requireOrganizationId(organizationId);
+  const uniqueIds = [
+    ...new Set((clientIds ?? []).filter((id) => typeof id === 'string' && id.trim() !== '')),
+  ];
+
+  if (uniqueIds.length === 0) {
+    return [];
+  }
+
+  return collection()
+    .find(
+      { organizationId, id: { $in: uniqueIds } },
+      { projection: { _id: 0, id: 1, name: 1 }, session }
+    )
+    .toArray();
+}
+
 export async function findAllByOrganization(organizationId, { session } = {}) {
   requireOrganizationId(organizationId);
   const docs = await collection()

@@ -84,7 +84,19 @@ export function ClientBookingPage() {
   }
 
   async function queryAvailability({ preserveCreateError = false } = {}) {
-    if (!serviceId || !date || availabilityBusy) {
+    if (availabilityBusy) {
+      return;
+    }
+
+    if (!serviceId) {
+      setAvailStatus('');
+      setAvailError('Debes seleccionar un servicio para consultar disponibilidad.');
+      return;
+    }
+
+    if (!date) {
+      setAvailStatus('');
+      setAvailError('Debes seleccionar una fecha para consultar disponibilidad.');
       return;
     }
 
@@ -139,7 +151,7 @@ export function ClientBookingPage() {
   }
 
   const canConsult = Boolean(
-    !createBusy && !availabilityBusy && !servicesLoading && serviceId && date
+    !createBusy && !availabilityBusy && !servicesLoading && services.length > 0
   );
   const canConfirm = Boolean(
     !createBusy &&

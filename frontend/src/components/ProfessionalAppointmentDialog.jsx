@@ -15,10 +15,6 @@ export function hasAppointmentEnded(appointment) {
   return !dayjs(appointment.endAt).isAfter(dayjs());
 }
 
-export function shortClientReference(clientId) {
-  return typeof clientId === 'string' && clientId ? clientId.slice(0, 8) : 'No disponible';
-}
-
 export function ProfessionalAppointmentDialog({ appointment, serviceName, onClose, onChanged }) {
   const dialogRef = useRef(null);
   const closeRef = useRef(null);
@@ -130,8 +126,8 @@ export function ProfessionalAppointmentDialog({ appointment, serviceName, onClos
               </dd>
             </div>
             <div>
-              <dt>Referencia de cliente</dt>
-              <dd>{shortClientReference(current.clientId)}</dd>
+              <dt>Cliente</dt>
+              <dd>{current.clientName || 'Cliente no disponible'}</dd>
             </div>
           </dl>
 

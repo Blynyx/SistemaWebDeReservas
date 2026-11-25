@@ -151,7 +151,7 @@ export function ProfessionalAgendaPage() {
   const events = useMemo(() => {
     const appointmentEvents = visibleAppointments.map((appointment) => ({
       id: `apt-${appointment.id}`,
-      title: `${serviceLookup(appointment.serviceId)} · ${getStatusLabel(appointment.status)}`,
+      title: `${serviceLookup(appointment.serviceId)} · ${appointment.clientName || 'Cliente no disponible'} · ${getStatusLabel(appointment.status)}`,
       start: appointment.startAt,
       end: appointment.endAt,
       className: `pro-event pro-event--${appointment.status}`,

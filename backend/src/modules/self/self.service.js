@@ -13,6 +13,7 @@ import {
   patchAvailabilityBlock,
   removeAvailabilityBlock,
 } from '../availabilityBlocks/availabilityBlock.service.js';
+import { findByIds as findClientsByIds } from '../clients/client.repository.js';
 
 export function getMyProfessional(professional) {
   return {
@@ -39,7 +40,21 @@ export function getMyClient(client) {
 }
 
 export async function listMyProfessionalAppointments(organizationId, professionalId, query) {
-  return listAppointmentsByProfessional(organizationId, professionalId, query);
+  const appointments = await listAppointmentsByProfessional(organizationId, professionalId, query);
+  if (appointments.length === 0) {
+    return appointments;
+  }
+
+  const clients = await findClientsByIds(
+    organizationId,
+    appointments.map((appointment) => appointment.clientId)
+  );
+  const clientNamesById = new Map(clients.map((client) => [client.id, client.name]));
+
+  return appointments.map((appointment) => ({
+    ...appointment,
+    clientName: clientNamesById.get(appointment.clientId) ?? 'Cliente no disponible',
+  }));
 }
 
 export async function listMyClientAppointments(organizationId, clientId, query) {

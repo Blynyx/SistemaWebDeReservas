@@ -306,10 +306,14 @@ async function applyStatusTransition({
   });
 }
 
-function assertAppointmentHasEnded(appointment) {
-  if (nowLocalDateTime() < appointment.end_at) {
+export function assertAppointmentHasEndedAt(appointment, now) {
+  if (now < appointment.end_at) {
     throw httpError(409, 'La cita aún no ha terminado');
   }
+}
+
+function assertAppointmentHasEnded(appointment) {
+  assertAppointmentHasEndedAt(appointment, nowLocalDateTime());
 }
 
 export async function createAppointment(organizationId, body) {
