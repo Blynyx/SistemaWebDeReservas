@@ -14,12 +14,16 @@ import {
   createClient,
   provisionClientAccount,
 } from '../../../modules/clients/client.service.js';
+import { createReceptionist } from '../../../modules/receptionists/receptionist.service.js';
+import { findByOrganizationIdAndEmail } from '../../../modules/userAccounts/userAccount.repository.js';
 
 export const DEMO_SEED_CONFIG = {
   organizationName: 'Demo Reservas',
   organizationSlug: 'demo-reservas',
   adminEmail: 'admin@demo.local',
   adminPassword: 'Admin123!',
+  receptionistEmail: 'recepcion@demo.local',
+  receptionistPassword: 'Recepcion123!',
   serviceName: 'Consulta General',
   serviceDurationMinutes: 60,
   servicePriceMinorUnits: 5000,
@@ -34,6 +38,25 @@ export const DEMO_SEED_CONFIG = {
 export async function seedDemoData() {
   const existing = await findBySlug(DEMO_SEED_CONFIG.organizationSlug);
   if (existing) {
+    const existingReceptionist = await findByOrganizationIdAndEmail(
+      existing.id,
+      DEMO_SEED_CONFIG.receptionistEmail
+    );
+    if (!existingReceptionist) {
+      await createReceptionist(existing.id, {
+        email: DEMO_SEED_CONFIG.receptionistEmail,
+        password: DEMO_SEED_CONFIG.receptionistPassword,
+      });
+      return {
+        skipped: false,
+        database: getMongoDb().databaseName,
+        organizationSlug: existing.slug,
+        receptionistEmail: DEMO_SEED_CONFIG.receptionistEmail,
+        receptionistPassword: DEMO_SEED_CONFIG.receptionistPassword,
+        message: 'Cuenta RECEPTIONIST demo agregada a la organización existente.',
+      };
+    }
+
     return {
       skipped: true,
       database: getMongoDb().databaseName,
@@ -49,6 +72,11 @@ export async function seedDemoData() {
   });
 
   const organizationId = organization.id;
+
+  await createReceptionist(organizationId, {
+    email: DEMO_SEED_CONFIG.receptionistEmail,
+    password: DEMO_SEED_CONFIG.receptionistPassword,
+  });
 
   const service = await createService(organizationId, {
     name: DEMO_SEED_CONFIG.serviceName,
@@ -94,6 +122,8 @@ export async function seedDemoData() {
     organizationSlug: organization.slug,
     adminEmail: DEMO_SEED_CONFIG.adminEmail,
     adminPassword: DEMO_SEED_CONFIG.adminPassword,
+    receptionistEmail: DEMO_SEED_CONFIG.receptionistEmail,
+    receptionistPassword: DEMO_SEED_CONFIG.receptionistPassword,
     professionalEmail: DEMO_SEED_CONFIG.professionalEmail,
     professionalPassword: DEMO_SEED_CONFIG.professionalPassword,
     clientEmail: DEMO_SEED_CONFIG.clientEmail,

@@ -14,6 +14,7 @@ import {
   removeAvailabilityBlock,
 } from '../availabilityBlocks/availabilityBlock.service.js';
 import { findByIds as findClientsByIds } from '../clients/client.repository.js';
+import { findByIds as findProfessionalsByIds } from '../professionals/professional.repository.js';
 
 export function getMyProfessional(professional) {
   return {
@@ -58,7 +59,24 @@ export async function listMyProfessionalAppointments(organizationId, professiona
 }
 
 export async function listMyClientAppointments(organizationId, clientId, query) {
-  return listAppointmentsByClient(organizationId, clientId, query);
+  const appointments = await listAppointmentsByClient(organizationId, clientId, query);
+  if (appointments.length === 0) {
+    return appointments;
+  }
+
+  const professionals = await findProfessionalsByIds(
+    organizationId,
+    appointments.map((appointment) => appointment.professionalId)
+  );
+  const professionalNamesById = new Map(
+    professionals.map((professional) => [professional.id, professional.name])
+  );
+
+  return appointments.map((appointment) => ({
+    ...appointment,
+    professionalName:
+      professionalNamesById.get(appointment.professionalId) ?? 'Profesional no disponible',
+  }));
 }
 
 export async function createMyAppointment(organizationId, clientId, body) {

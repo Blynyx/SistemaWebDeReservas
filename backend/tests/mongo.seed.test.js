@@ -19,14 +19,25 @@ describe('MongoDB Demo Seed (Etapa 26F)', () => {
     await closeMongo();
   });
 
-  it('crea datos demo reproducibles en la primera ejecución y es idempotente en la segunda', async () => {
+  it('crea datos demo reproducibles (incluyendo RECEPTIONIST) en la primera ejecución y es idempotente en la segunda', async () => {
     const first = await seedDemoData();
     assert.equal(first.skipped, false);
     assert.equal(first.organizationSlug, DEMO_SEED_CONFIG.organizationSlug);
+    assert.equal(first.receptionistEmail, DEMO_SEED_CONFIG.receptionistEmail);
 
     const db = getMongoDb();
     assert.equal(await db.collection('organizations').countDocuments({ slug: 'demo-reservas' }), 1);
-    assert.equal(await db.collection('userAccounts').countDocuments({}), 3);
+    assert.equal(await db.collection('userAccounts').countDocuments({}), 4);
+
+    const receptionist = await db.collection('userAccounts').findOne({
+      email: DEMO_SEED_CONFIG.receptionistEmail,
+    });
+    assert.ok(receptionist);
+    assert.equal(receptionist.role, 'RECEPTIONIST');
+    assert.equal(receptionist.isActive, true);
+    assert.ok(typeof receptionist.passwordHash === 'string' && receptionist.passwordHash.length > 0);
+    assert.notEqual(receptionist.passwordHash, DEMO_SEED_CONFIG.receptionistPassword);
+
     assert.equal(await db.collection('services').countDocuments({}), 1);
     assert.equal(await db.collection('professionals').countDocuments({}), 1);
     assert.equal(await db.collection('professionalServices').countDocuments({}), 1);
@@ -38,6 +49,6 @@ describe('MongoDB Demo Seed (Etapa 26F)', () => {
     assert.equal(second.skipped, true);
     assert.equal(second.message, 'Datos demo ya existentes; no se duplicaron.');
     assert.equal(await db.collection('organizations').countDocuments({ slug: 'demo-reservas' }), 1);
-    assert.equal(await db.collection('userAccounts').countDocuments({}), 3);
+    assert.equal(await db.collection('userAccounts').countDocuments({}), 4);
   });
 });

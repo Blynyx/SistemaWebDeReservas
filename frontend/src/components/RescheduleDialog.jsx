@@ -130,7 +130,9 @@ export function RescheduleDialog({ appointment, serviceName, onClose, onReschedu
       <form className="booking-dialog__form" noValidate onSubmit={handleSubmit}>
         <p className="panel-status">
           {appointment
-            ? `${serviceName} · Horario actual: ${formatLocalDate(
+            ? `${serviceName} · Profesional: ${
+                appointment.professionalName || 'Profesional no disponible'
+              } · Horario actual: ${formatLocalDate(
                 appointment.startAt
               )} ${formatLocalTime(appointment.startAt)}`
             : ''}

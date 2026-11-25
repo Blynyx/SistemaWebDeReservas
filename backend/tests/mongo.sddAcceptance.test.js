@@ -1860,4 +1860,95 @@ describe('SDD Acceptance Suite — Rectificación 52/52 (Etapa 30B-R)', () => {
     assert.deepEqual(res.data.notifications, []);
     assert.equal(res.data.unreadCount, 0);
   });
+
+  // ---------------------------------------------------------------------------
+  // Etapa 31A (complementaria) — Enriquecimiento seguro de professionalName en /me/client/appointments
+  // ---------------------------------------------------------------------------
+
+  it('31A-CLIENT-PROFNAME: /me/client/appointments incluye professionalName propio, aísla citas/nombres ajenos, conserva profesional desactivado y /professionals sigue 403', async () => {
+    // 2030-06-12 is Wednesday (3)
+    const date = '2030-06-12';
+    const proActive = await createPro({
+      name: 'Dra. Sofía Activa',
+      email: 'sofia.31a@test.local',
+      schedules: [{ dayOfWeek: 3, startTime: '09:00', endTime: '14:00' }],
+      withAccount: false,
+    });
+    const proInactive = await createPro({
+      name: 'Dr. Diego Histórico',
+      email: 'diego.31a@test.local',
+      schedules: [{ dayOfWeek: 3, startTime: '09:00', endTime: '14:00' }],
+      withAccount: false,
+    });
+    const proExclusiveB = await createPro({
+      name: 'Dra. Elena Exclusiva B',
+      email: 'elena.31a@test.local',
+      schedules: [{ dayOfWeek: 3, startTime: '09:00', endTime: '14:00' }],
+      withAccount: false,
+    });
+    const clientA = await createClient({
+      name: 'Cliente 31A A',
+      email: 'cli.31a.a@test.local',
+    });
+    const clientB = await createClient({
+      name: 'Cliente 31A B',
+      email: 'cli.31a.b@test.local',
+    });
+
+    const aptA1 = await api('/me/client/appointments', {
+      method: 'POST',
+      headers: clientA.headers,
+      body: { professionalId: proActive.id, serviceId: mainService.id, startAt: `${date}T09:00` },
+    });
+    assert.equal(aptA1.status, 201);
+
+    const aptA2 = await api('/me/client/appointments', {
+      method: 'POST',
+      headers: clientA.headers,
+      body: { professionalId: proInactive.id, serviceId: mainService.id, startAt: `${date}T10:00` },
+    });
+    assert.equal(aptA2.status, 201);
+
+    const aptB = await api('/me/client/appointments', {
+      method: 'POST',
+      headers: clientB.headers,
+      body: {
+        professionalId: proExclusiveB.id,
+        serviceId: mainService.id,
+        startAt: `${date}T09:00`,
+      },
+    });
+    assert.equal(aptB.status, 201);
+
+    // Desactivar profesional histórico: la cita de Cliente A debe conservar su nombre
+    const deactivateRes = await api(`/professionals/${proInactive.id}`, {
+      method: 'DELETE',
+      headers: adminHeaders,
+    });
+    assert.ok(deactivateRes.status === 200 || deactivateRes.status === 204);
+
+    // Cliente A consulta sus citas
+    const listRes = await api('/me/client/appointments', { headers: clientA.headers });
+    assert.equal(listRes.status, 200);
+    const list = listRes.data.appointments;
+    assert.equal(list.length, 2);
+    assert.ok(list.every((a) => a.clientId === clientA.id));
+    assert.ok(!list.some((a) => a.id === aptB.data.id));
+    assert.ok(
+      !JSON.stringify(list).includes('Dra. Elena Exclusiva B'),
+      'No debe exponer nombres de profesionales ajenos a las citas del cliente'
+    );
+
+    const byId = new Map(list.map((a) => [a.id, a]));
+    assert.equal(byId.get(aptA1.data.id).professionalName, 'Dra. Sofía Activa');
+    assert.equal(byId.get(aptA2.data.id).professionalName, 'Dr. Diego Histórico');
+
+    // No se exponen campos personales innecesarios del profesional
+    assert.equal(byId.get(aptA1.data.id).professionalEmail, undefined);
+    assert.equal(byId.get(aptA1.data.id).professionalPhone, undefined);
+
+    // GET /api/v1/professionals debe seguir restringido (403 para CLIENT)
+    const prosRes = await api('/professionals', { headers: clientA.headers });
+    assert.equal(prosRes.status, 403);
+  });
 });

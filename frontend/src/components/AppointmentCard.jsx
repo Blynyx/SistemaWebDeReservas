@@ -41,7 +41,7 @@ export function AppointmentCard({
         </div>
         <div>
           <dt>Profesional</dt>
-          <dd>{appointment.professionalId}</dd>
+          <dd>{appointment.professionalName || 'Profesional no disponible'}</dd>
         </div>
       </dl>
 
